@@ -1,0 +1,81 @@
+"""
+Main FastAPI application for AutoCut
+"""
+import logging
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+
+from .api.routes import router
+from .config import settings
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+
+# Create FastAPI app
+app = FastAPI(
+    title="AutoCut API",
+    description="Automatic silence detection and video cutting service",
+    version="1.0.0"
+)
+
+# Configure CORS for local development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include API routes
+app.include_router(router, prefix="/api")
+
+# Health check
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "AutoCut",
+        "version": "1.0.0"
+    }
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize application on startup"""
+    logger.info("Starting AutoCut API server")
+    logger.info(f"Upload directory: {settings.UPLOAD_DIR}")
+    logger.info(f"Output directory: {settings.OUTPUT_DIR}")
+    logger.info(f"Temp directory: {settings.TEMP_DIR}")
+
+    # Ensure directories exist
+    settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    settings.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    settings.TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+    logger.info("AutoCut API server started successfully")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    logger.info("Shutting down AutoCut API server")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "backend.main:app",
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=True,
+        log_level="info"
+    )

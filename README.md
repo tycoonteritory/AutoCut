@@ -99,7 +99,7 @@ Une fois terminé, téléchargez :
 ### 5. Importer dans votre éditeur
 
 #### Premiere Pro
-1. Fichier → Importer
+1. Fichier → Importer/Users/vincentmary/Documents/GitHub/AutoCut
 2. Sélectionnez le fichier `.xml`
 3. Votre séquence avec les coupes apparaît
 

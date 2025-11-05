@@ -61,15 +61,38 @@ class VideoProcessor:
                 await progress_callback(0, "Starting video analysis...")
 
             # Create a sync wrapper for the async callback to use in the detector
+            loop = asyncio.get_event_loop()
+
             def sync_progress_callback(progress: float):
                 if progress_callback:
-                    # Schedule the async callback without waiting for it
-                    asyncio.create_task(progress_callback(progress, "Analyzing video..."))
+                    # Use call_soon_threadsafe to schedule the callback from sync code
+                    try:
+                        # Determine message based on progress
+                        if progress < 30:
+                            message = "Extracting audio from video..."
+                        elif progress < 40:
+                            message = "Loading audio for analysis..."
+                        elif progress < 60:
+                            message = "Detecting silence periods..."
+                        else:
+                            message = "Analyzing video content..."
+
+                        future = asyncio.run_coroutine_threadsafe(
+                            progress_callback(progress, message),
+                            loop
+                        )
+                        # Don't wait for result to avoid blocking
+                    except Exception as e:
+                        logger.error(f"Error in progress callback: {e}")
 
             # Step 1: Analyze video and detect silences
-            analysis_result = self.silence_detector.analyze_video(
-                video_path,
-                progress_callback=sync_progress_callback
+            # Run in executor to avoid blocking the event loop
+            analysis_result = await loop.run_in_executor(
+                None,
+                lambda: self.silence_detector.analyze_video(
+                    video_path,
+                    progress_callback=sync_progress_callback
+                )
             )
 
             if progress_callback:

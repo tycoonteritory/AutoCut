@@ -76,17 +76,21 @@ class PremiereProExporter:
         audio_track = ET.SubElement(audio, 'track')
 
         # Add clips for each non-silent segment
+        # Place clips continuously on timeline (no gaps)
+        timeline_position = 0
+
         for idx, (start_ms, end_ms) in enumerate(cuts):
-            start_frame = self.ms_to_frames(start_ms)
-            end_frame = self.ms_to_frames(end_ms)
-            duration_frames = end_frame - start_frame
+            source_in_frame = self.ms_to_frames(start_ms)
+            source_out_frame = self.ms_to_frames(end_ms)
+            duration_frames = source_out_frame - source_in_frame
 
             # Video clip
             video_clip = self._create_clip(
                 idx + 1,
-                start_frame,
-                end_frame,
+                source_in_frame,
+                source_out_frame,
                 duration_frames,
+                timeline_position,
                 'video'
             )
             video_track.append(video_clip)
@@ -94,12 +98,16 @@ class PremiereProExporter:
             # Audio clip
             audio_clip = self._create_clip(
                 idx + 1,
-                start_frame,
-                end_frame,
+                source_in_frame,
+                source_out_frame,
                 duration_frames,
+                timeline_position,
                 'audio'
             )
             audio_track.append(audio_clip)
+
+            # Move timeline position forward (no gap)
+            timeline_position += duration_frames
 
         # Write XML to file
         tree = ET.ElementTree(xmeml)
@@ -112,9 +120,10 @@ class PremiereProExporter:
     def _create_clip(
         self,
         clip_id: int,
-        start_frame: int,
-        end_frame: int,
+        source_in_frame: int,
+        source_out_frame: int,
         duration_frames: int,
+        timeline_position: int,
         media_type: str
     ) -> ET.Element:
         """Create a clip element for the XML"""
@@ -128,11 +137,13 @@ class PremiereProExporter:
         ET.SubElement(rate, 'timebase').text = str(self.timebase)
         ET.SubElement(rate, 'ntsc').text = 'FALSE'
 
-        # In and out points
-        ET.SubElement(clip_item, 'start').text = str(start_frame)
-        ET.SubElement(clip_item, 'end').text = str(end_frame)
-        ET.SubElement(clip_item, 'in').text = str(start_frame)
-        ET.SubElement(clip_item, 'out').text = str(end_frame)
+        # Timeline placement (continuous, no gaps)
+        ET.SubElement(clip_item, 'start').text = str(timeline_position)
+        ET.SubElement(clip_item, 'end').text = str(timeline_position + duration_frames)
+
+        # Source in/out points (where to read from the source video)
+        ET.SubElement(clip_item, 'in').text = str(source_in_frame)
+        ET.SubElement(clip_item, 'out').text = str(source_out_frame)
 
         # File reference
         file_elem = ET.SubElement(clip_item, 'file', id=f"file-{clip_id}")

@@ -102,9 +102,14 @@ class FinalCutProExporter:
         spine = ET.SubElement(sequence, 'spine')
 
         # Add clips for each non-silent segment
+        # Place clips continuously on timeline (no gaps)
+        timeline_offset_ms = 0
+
         for idx, (start_ms, end_ms) in enumerate(cuts):
-            start_time = self.ms_to_seconds(start_ms)
-            duration = self.ms_to_seconds(end_ms - start_ms)
+            source_start_time = self.ms_to_seconds(start_ms)
+            duration_ms = end_ms - start_ms
+            duration = self.ms_to_seconds(duration_ms)
+            timeline_offset = self.ms_to_seconds(timeline_offset_ms)
 
             # Asset clip
             asset_clip = ET.SubElement(
@@ -112,11 +117,14 @@ class FinalCutProExporter:
                 'asset-clip',
                 name=f"Segment {idx + 1}",
                 ref='r2',
-                offset=start_time,
+                offset=timeline_offset,  # Position on timeline (continuous)
                 duration=duration,
-                start=start_time,
+                start=source_start_time,  # Where to read from source video
                 format='r1'
             )
+
+            # Move timeline offset forward (no gap)
+            timeline_offset_ms += duration_ms
 
         # Write XML to file
         tree = ET.ElementTree(fcpxml)

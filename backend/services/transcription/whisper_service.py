@@ -49,7 +49,7 @@ class WhisperTranscriptionService:
 
         Args:
             audio_path: Path to audio file (WAV)
-            progress_callback: Callback for progress updates
+            progress_callback: Callback for progress updates (can be sync or async)
 
         Returns:
             Dictionary with transcription results
@@ -59,7 +59,19 @@ class WhisperTranscriptionService:
             self._load_model()
 
             if progress_callback:
-                progress_callback(0, "Starting transcription...")
+                # Try to detect if callback is async and handle it
+                import asyncio
+                import inspect
+                if inspect.iscoroutinefunction(progress_callback):
+                    # Async callback - create task without waiting
+                    try:
+                        loop = asyncio.get_event_loop()
+                        asyncio.ensure_future(progress_callback(0, "Starting transcription..."))
+                    except:
+                        pass  # No event loop, skip
+                else:
+                    # Sync callback
+                    progress_callback(0, "Starting transcription...")
 
             logger.info(f"Transcribing audio: {audio_path}")
 
@@ -72,7 +84,16 @@ class WhisperTranscriptionService:
             )
 
             if progress_callback:
-                progress_callback(100, "Transcription complete!")
+                # Try async callback
+                import asyncio
+                import inspect
+                if inspect.iscoroutinefunction(progress_callback):
+                    try:
+                        asyncio.ensure_future(progress_callback(100, "Transcription complete!"))
+                    except:
+                        pass
+                else:
+                    progress_callback(100, "Transcription complete!")
 
             # Extract segments with timestamps
             segments = []

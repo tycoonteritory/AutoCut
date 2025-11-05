@@ -70,12 +70,18 @@ async def transcribe_video_task(job_id: str):
 
         await progress_callback(0, "Starting transcription...")
 
-        # Transcribe
+        # Transcribe (synchronous operation in thread pool to not block)
+        import concurrent.futures
         transcription_service = WhisperTranscriptionService()
-        transcription_result = transcription_service.transcribe_video(
+
+        # Run transcription in executor to not block event loop
+        loop = asyncio.get_event_loop()
+        transcription_result = await loop.run_in_executor(
+            None,
+            transcription_service.transcribe_video,
             video_path,
             audio_path,
-            progress_callback=lambda p, m: asyncio.create_task(progress_callback(p, m))
+            progress_callback  # Pass the async callback directly
         )
 
         await progress_callback(90, "Saving transcription files...")

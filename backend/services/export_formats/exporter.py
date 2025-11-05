@@ -13,16 +13,30 @@ logger = logging.getLogger(__name__)
 class ExportService:
     """Coordinates export to different video editing formats"""
 
-    def __init__(self, video_path: Path, fps: int = 30):
+    def __init__(self, video_path: Path, fps: int = 30, clean_name: str = None):
         """
         Initialize export service
 
         Args:
             video_path: Path to source video
             fps: Frames per second (default: 30)
+            clean_name: Clean name for output files (optional, will use video stem if not provided)
         """
         self.video_path = video_path
         self.fps = fps
+        # Extract clean name from video_path if not provided
+        # Remove job_id prefix (UUID_filename -> filename)
+        if clean_name:
+            self.clean_name = clean_name
+        else:
+            stem = video_path.stem
+            # Check if stem starts with a UUID pattern (8-4-4-4-12 hex digits)
+            parts = stem.split('_', 1)
+            if len(parts) > 1 and len(parts[0]) == 36:  # UUID length
+                self.clean_name = parts[1]
+            else:
+                self.clean_name = stem
+
         self.premiere_exporter = PremiereProExporter(video_path, fps)
         self.fcpx_exporter = FinalCutProExporter(video_path, fps)
 
@@ -49,7 +63,7 @@ class ExportService:
 
         # Export to Premiere Pro
         try:
-            premiere_path = output_dir / f"{self.video_path.stem}_premiere_pro.xml"
+            premiere_path = output_dir / f"{self.clean_name}_premiere_pro.xml"
             self.premiere_exporter.generate_xml(cuts, premiere_path, video_duration_seconds)
             results['premiere_pro'] = premiere_path
             logger.info(f"Premiere Pro export complete: {premiere_path}")
@@ -59,7 +73,7 @@ class ExportService:
 
         # Export to Final Cut Pro X
         try:
-            fcpx_path = output_dir / f"{self.video_path.stem}_final_cut_pro.fcpxml"
+            fcpx_path = output_dir / f"{self.clean_name}_final_cut_pro.fcpxml"
             self.fcpx_exporter.generate_xml(cuts, fcpx_path, video_duration_seconds)
             results['final_cut_pro'] = fcpx_path
             logger.info(f"Final Cut Pro export complete: {fcpx_path}")

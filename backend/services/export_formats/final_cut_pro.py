@@ -71,12 +71,18 @@ class FinalCutProExporter:
             'asset',
             id='r2',
             name=self.video_path.stem,
-            src=f"file:///{self.video_path.as_posix()}",
             start='0s',
             duration=f"{video_duration_seconds:.3f}s",
             hasVideo='1',
-            hasAudio='1',
-            format='r1'
+            hasAudio='1'
+        )
+
+        # Add media-rep child element (required by DTD)
+        media_rep = ET.SubElement(
+            asset,
+            'media-rep',
+            kind='original-media',
+            src=f"file:///{self.video_path.as_posix()}"
         )
 
         # Library

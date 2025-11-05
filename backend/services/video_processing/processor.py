@@ -76,7 +76,9 @@ class VideoProcessor:
                 await progress_callback(70, "Analysis complete, generating exports...")
 
             # Step 2: Export to video editing formats
-            exporter = ExportService(video_path, self.fps)
+            # Use output_dir name as clean_name for export files
+            clean_name = output_dir.name
+            exporter = ExportService(video_path, self.fps, clean_name=clean_name)
 
             export_results = exporter.export_all(
                 cuts=analysis_result['non_silent_periods'],

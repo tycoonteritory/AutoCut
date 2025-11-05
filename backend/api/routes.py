@@ -136,10 +136,17 @@ async def process_video_task(
         async def progress_callback(progress: float, message: str):
             await ws_manager.send_progress(job_id, progress, message)
 
+        # Use original video name (stem) for output directory
+        # Clean the name to remove special characters
+        original_name = active_jobs[job_id]['filename']
+        clean_name = Path(original_name).stem
+        # Remove special characters that might cause issues
+        clean_name = "".join(c for c in clean_name if c.isalnum() or c in (' ', '-', '_')).strip()
+
         # Process video
         result = await processor.process_video(
             video_path,
-            settings.OUTPUT_DIR / job_id,
+            settings.OUTPUT_DIR / clean_name,
             progress_callback=progress_callback
         )
 

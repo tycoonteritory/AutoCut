@@ -99,6 +99,13 @@ class YouTubeOptimizer:
             if progress_callback:
                 await progress_callback(100, "Optimization complete!")
 
+            # Convert thumbnail absolute paths to relative URLs
+            from backend.config import settings
+            for thumb in thumbnails:
+                abs_path = Path(thumb['path'])
+                rel_path = abs_path.relative_to(settings.OUTPUT_DIR)
+                thumb['url'] = f"/outputs/{rel_path.as_posix()}"
+
             result = {
                 "success": True,
                 "titles": titles,

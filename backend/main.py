@@ -39,6 +39,9 @@ app.add_middleware(
 app.include_router(phase1_router, prefix="/api")
 app.include_router(phase2_router, prefix="/api")
 
+# Mount static files for outputs (thumbnails, etc.)
+app.mount("/outputs", StaticFiles(directory=str(settings.OUTPUT_DIR)), name="outputs")
+
 # Health check
 @app.get("/health")
 async def health_check():

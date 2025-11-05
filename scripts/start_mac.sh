@@ -11,10 +11,36 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Check if Python is installed
-if ! command -v python3 &> /dev/null; then
+# Check for Python - prefer 3.12, then 3.11, then 3.10, then 3.9, then default
+PYTHON_CMD=""
+if command -v python3.12 &> /dev/null; then
+    PYTHON_CMD="python3.12"
+    echo -e "${GREEN}[OK] Using Python 3.12${NC}"
+elif command -v python3.11 &> /dev/null; then
+    PYTHON_CMD="python3.11"
+    echo -e "${GREEN}[OK] Using Python 3.11${NC}"
+elif command -v python3.10 &> /dev/null; then
+    PYTHON_CMD="python3.10"
+    echo -e "${GREEN}[OK] Using Python 3.10${NC}"
+elif command -v python3.9 &> /dev/null; then
+    PYTHON_CMD="python3.9"
+    echo -e "${GREEN}[OK] Using Python 3.9${NC}"
+elif command -v python3 &> /dev/null; then
+    PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
+    if [[ "$PYTHON_VERSION" == "3.14" ]] || [[ "$PYTHON_VERSION" == "3.13" ]]; then
+        echo -e "${YELLOW}[WARNING] Python $PYTHON_VERSION detected - this may cause compatibility issues${NC}"
+        echo "Installing Python 3.12 is recommended:"
+        echo "  brew install python@3.12"
+        echo ""
+        echo "Press Enter to continue anyway, or Ctrl+C to cancel..."
+        read
+    fi
+    PYTHON_CMD="python3"
+    echo -e "${GREEN}[OK] Using Python $(python3 --version)${NC}"
+else
     echo -e "${RED}[ERROR] Python 3 is not installed!${NC}"
-    echo "Please install Python 3.8 or higher from https://www.python.org/"
+    echo "Please install Python 3.12 with Homebrew:"
+    echo "  brew install python@3.12"
     exit 1
 fi
 
@@ -46,8 +72,8 @@ cd "$PROJECT_DIR"
 # Install Python dependencies
 echo "[1/4] Installing Python dependencies..."
 if [ ! -d "backend/venv" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv backend/venv
+    echo "Creating virtual environment with $PYTHON_CMD..."
+    $PYTHON_CMD -m venv backend/venv
 fi
 
 source backend/venv/bin/activate

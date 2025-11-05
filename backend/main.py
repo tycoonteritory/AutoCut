@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from .api.routes import router
+from .api.routes import router as phase1_router
+from .api.routes_phase2 import router as phase2_router
 from .config import settings
 
 # Configure logging
@@ -21,8 +22,8 @@ logger = logging.getLogger(__name__)
 # Create FastAPI app
 app = FastAPI(
     title="AutoCut API",
-    description="Automatic silence detection and video cutting service",
-    version="1.0.0"
+    description="Automatic silence detection, video cutting, transcription and YouTube optimization service",
+    version="2.0.0"
 )
 
 # Configure CORS for local development
@@ -35,7 +36,8 @@ app.add_middleware(
 )
 
 # Include API routes
-app.include_router(router, prefix="/api")
+app.include_router(phase1_router, prefix="/api")
+app.include_router(phase2_router, prefix="/api")
 
 # Health check
 @app.get("/health")

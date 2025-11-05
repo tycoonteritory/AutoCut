@@ -6,3 +6,11 @@ pydub==0.25.1
 numpy==1.26.4
 aiofiles==23.2.1
 python-dotenv==1.0.0
+
+# Phase 2 - Transcription & YouTube Optimization
+openai==1.54.0
+openai-whisper==20231117
+opencv-python==4.10.0.84
+Pillow==10.4.0
+spacy==3.7.5
+pysrt==1.1.2

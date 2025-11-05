@@ -1,0 +1,15 @@
+# Phase 2 dependencies - Transcription & YouTube Optimization
+
+# OpenAI (Whisper + GPT-4)
+openai==1.54.0
+openai-whisper==20231117
+
+# Image processing for thumbnails
+opencv-python==4.10.0.84
+Pillow==10.4.0
+
+# Text analysis for tags/keywords
+spacy==3.7.5
+
+# Subtitle formats
+pysrt==1.1.2

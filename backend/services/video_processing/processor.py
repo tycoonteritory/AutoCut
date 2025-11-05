@@ -2,6 +2,7 @@
 Main video processing service that orchestrates the entire workflow
 """
 import logging
+import asyncio
 from pathlib import Path
 from typing import Callable, Optional, Dict, Any
 from ..silence_detection.detector import SilenceDetector
@@ -57,16 +58,22 @@ class VideoProcessor:
             logger.info(f"Starting video processing: {video_path}")
 
             if progress_callback:
-                progress_callback(0, "Starting video analysis...")
+                await progress_callback(0, "Starting video analysis...")
+
+            # Create a sync wrapper for the async callback to use in the detector
+            def sync_progress_callback(progress: float):
+                if progress_callback:
+                    # Schedule the async callback without waiting for it
+                    asyncio.create_task(progress_callback(progress, "Analyzing video..."))
 
             # Step 1: Analyze video and detect silences
             analysis_result = self.silence_detector.analyze_video(
                 video_path,
-                progress_callback=lambda p: progress_callback(p, "Analyzing video...") if progress_callback else None
+                progress_callback=sync_progress_callback
             )
 
             if progress_callback:
-                progress_callback(70, "Analysis complete, generating exports...")
+                await progress_callback(70, "Analysis complete, generating exports...")
 
             # Step 2: Export to video editing formats
             exporter = ExportService(video_path, self.fps)
@@ -78,7 +85,7 @@ class VideoProcessor:
             )
 
             if progress_callback:
-                progress_callback(90, "Exports generated...")
+                await progress_callback(90, "Exports generated...")
 
             # Compile final result
             result = {
@@ -97,7 +104,7 @@ class VideoProcessor:
             }
 
             if progress_callback:
-                progress_callback(100, "Processing complete!")
+                await progress_callback(100, "Processing complete!")
 
             logger.info("Video processing complete")
             return result
@@ -105,7 +112,7 @@ class VideoProcessor:
         except Exception as e:
             logger.error(f"Error processing video: {e}", exc_info=True)
             if progress_callback:
-                progress_callback(0, f"Error: {str(e)}")
+                await progress_callback(0, f"Error: {str(e)}")
             return {
                 'success': False,
                 'error': str(e),

@@ -51,10 +51,18 @@ if [ ! -d "backend/venv" ]; then
 fi
 
 source backend/venv/bin/activate
+
+# Upgrade pip, setuptools and wheel first (fixes Python 3.14 compatibility)
+echo "Upgrading pip, setuptools and wheel..."
+pip install --upgrade pip setuptools wheel > /dev/null 2>&1
+
+echo "Installing dependencies..."
 pip install -q -r backend/requirements.txt
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}[ERROR] Failed to install Python dependencies${NC}"
+    echo "Trying without quiet mode to see the error..."
+    pip install -r backend/requirements.txt
     exit 1
 fi
 

@@ -450,7 +450,19 @@ function App() {
                     <strong>✅ Transcription complete!</strong>
                   </div>
                   <div className="result-item">
-                    <strong>Text:</strong> {transcriptionResult.text?.substring(0, 200)}...
+                    <strong>Preview:</strong>
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '10px',
+                      backgroundColor: '#fff',
+                      borderRadius: '5px',
+                      maxHeight: '150px',
+                      overflow: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      fontSize: '14px'
+                    }}>
+                      {transcriptionResult.text || 'No text available'}
+                    </div>
                   </div>
                   <div className="download-section">
                     <h4>📥 Download Transcription:</h4>

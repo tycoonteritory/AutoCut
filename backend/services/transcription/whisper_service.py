@@ -80,8 +80,16 @@ class WhisperTranscriptionService:
                 str(audio_path),
                 language=self.language,
                 task="transcribe",
-                verbose=False
+                verbose=False,
+                fp16=False  # Disable FP16 for better compatibility
             )
+
+            # Debug logging
+            logger.info(f"Whisper raw result keys: {result.keys()}")
+            raw_text = result.get("text", "")
+            logger.info(f"Transcription text length: {len(raw_text)} characters")
+            logger.info(f"Number of segments: {len(result.get('segments', []))}")
+            logger.info(f"Text preview (first 200 chars): {raw_text[:200]}")
 
             if progress_callback:
                 # Try async callback

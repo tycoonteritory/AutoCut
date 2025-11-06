@@ -8,10 +8,11 @@ aiofiles==23.2.1
 python-dotenv==1.0.0
 
 # Phase 2 - Transcription & YouTube Optimization
+# IMPORTANT: Install in this exact order to avoid conflicts
+tiktoken==0.7.0  # Must be installed BEFORE openai
 openai==1.54.0
 openai-whisper==20231117
 opencv-python==4.10.0.84
 Pillow==10.4.0
 spacy==3.7.5
 pysrt==1.1.2
-tiktoken>=0.5.0  # Ensure compatible version with openai 1.54.0

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "========================================="
-echo "  Fixing OpenAI Dependencies"
+echo "  🔧 Fixing OpenAI Dependencies"
 echo "========================================="
 echo ""
 
@@ -14,24 +14,35 @@ cd "$PROJECT_DIR"
 # Activate venv
 source backend/venv/bin/activate
 
-echo "[1/3] Uninstalling conflicting packages..."
-pip uninstall -y tiktoken openai openai-whisper
+echo "[1/4] Uninstalling all OpenAI-related packages..."
+pip uninstall -y tiktoken openai openai-whisper 2>/dev/null
+
+# Clean pip cache to avoid conflicts
+echo ""
+echo "[2/4] Cleaning pip cache..."
+pip cache purge 2>/dev/null
 
 echo ""
-echo "[2/3] Reinstalling OpenAI packages in correct order..."
-pip install tiktoken==0.7.0
-pip install openai==1.54.0
-pip install openai-whisper==20231117
+echo "[3/4] Reinstalling OpenAI packages in correct order..."
+echo "  → Installing tiktoken 0.7.0 first..."
+pip install --no-cache-dir tiktoken==0.7.0
+
+echo "  → Installing openai 1.54.0..."
+pip install --no-cache-dir openai==1.54.0
+
+echo "  → Installing openai-whisper..."
+pip install --no-cache-dir openai-whisper==20231117
 
 echo ""
-echo "[3/3] Verifying installation..."
-python -c "from openai import OpenAI; print('OpenAI client: OK')"
-python -c "import whisper; print('Whisper: OK')"
-python -c "import tiktoken; print('Tiktoken: OK')"
+echo "[4/4] Verifying installation..."
+python -c "from openai import OpenAI; client = OpenAI(api_key='test'); print('✓ OpenAI client: OK')" || echo "✗ OpenAI failed"
+python -c "import whisper; print('✓ Whisper: OK')" || echo "✗ Whisper failed"
+python -c "import tiktoken; print('✓ Tiktoken: OK')" || echo "✗ Tiktoken failed"
 
 echo ""
 echo "========================================="
-echo "  Dependencies fixed!"
+echo "  ✅ Dependencies fixed!"
 echo "========================================="
 echo ""
 echo "Now restart the backend server."
+echo ""

@@ -10,9 +10,9 @@ function App() {
   const [error, setError] = useState(null)
   const [jobId, setJobId] = useState(null)
   const [settings, setSettings] = useState({
-    silenceThreshold: -60,  // Très permissif: seulement les silences très marqués
-    minSilenceDuration: 1500,  // 1.5 secondes minimum de silence
-    padding: 300,  // 300ms de marge autour des cuts (très smooth)
+    silenceThreshold: -45,  // Équilibré: détecte les silences sans être trop agressif
+    minSilenceDuration: 800,  // 0.8 secondes - bon équilibre
+    padding: 250,  // 250ms de marge pour transitions fluides
     fps: 30
   })
 

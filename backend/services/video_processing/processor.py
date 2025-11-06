@@ -112,6 +112,18 @@ class VideoProcessor:
             if progress_callback:
                 await progress_callback(90, "Exports generated...")
 
+            # Calculate time statistics
+            # Total duration of kept segments (non-silent)
+            kept_duration_ms = sum(end - start for start, end in analysis_result['non_silent_periods'])
+            kept_duration_seconds = kept_duration_ms / 1000.0
+
+            # Total duration of removed segments (silence)
+            removed_duration_ms = sum(end - start for start, end in analysis_result['silence_periods'])
+            removed_duration_seconds = removed_duration_ms / 1000.0
+
+            # Percentage saved
+            percentage_saved = (removed_duration_seconds / analysis_result['duration_seconds'] * 100) if analysis_result['duration_seconds'] > 0 else 0
+
             # Compile final result
             result = {
                 'success': True,
@@ -120,6 +132,9 @@ class VideoProcessor:
                 'duration_seconds': analysis_result['duration_seconds'],
                 'total_cuts': len(analysis_result['non_silent_periods']),
                 'silence_periods_removed': len(analysis_result['silence_periods']),
+                'kept_duration_seconds': kept_duration_seconds,
+                'removed_duration_seconds': removed_duration_seconds,
+                'percentage_saved': round(percentage_saved, 1),
                 'cuts': analysis_result['non_silent_periods'],
                 'exports': {
                     'premiere_pro': str(export_results.get('premiere_pro')) if export_results.get('premiere_pro') else None,

@@ -383,17 +383,61 @@ function App() {
           <div className="result-item">
             <strong>Video:</strong> {result.video_name}
           </div>
-          <div className="result-item">
-            <strong>Duration:</strong> {formatTime(result.duration_seconds)}
-          </div>
-          <div className="result-item">
-            <strong>Total Cuts:</strong> {result.total_cuts}
-          </div>
-          <div className="result-item">
-            <strong>Silence Periods Removed:</strong> {result.silence_periods_removed}
+
+          {/* Statistics Section */}
+          <div style={{
+            marginTop: '20px',
+            padding: '15px',
+            backgroundColor: '#f0f9ff',
+            borderRadius: '8px',
+            border: '2px solid #0ea5e9'
+          }}>
+            <h4 style={{ marginTop: 0, marginBottom: '15px', color: '#0369a1' }}>📊 Statistics</h4>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>⏱️ Original Duration</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#333' }}>
+                  {formatTime(result.duration_seconds)}
+                </div>
+              </div>
+
+              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>✂️ Final Duration</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#22c55e' }}>
+                  {formatTime(result.kept_duration_seconds)}
+                </div>
+              </div>
+
+              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>🎬 Number of Cuts</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3b82f6' }}>
+                  {result.total_cuts}
+                </div>
+              </div>
+
+              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>🔇 Silences Removed</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#ef4444' }}>
+                  {result.silence_periods_removed}
+                </div>
+              </div>
+
+              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px', gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>⚡ Time Saved</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#8b5cf6' }}>
+                    {formatTime(result.removed_duration_seconds)}
+                  </span>
+                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#8b5cf6' }}>
+                    ({result.percentage_saved}%)
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="download-section">
+          <div className="download-section" style={{ marginTop: '20px' }}>
             <h4>📥 Download Export Files:</h4>
             {result.exports.premiere_pro && (
               <a

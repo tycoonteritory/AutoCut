@@ -10,6 +10,7 @@ from pathlib import Path
 from .api.routes import router as phase1_router
 from .api.routes_phase2 import router as phase2_router
 from .config import settings
+from .database import init_db
 
 # Configure logging
 logging.basicConfig(
@@ -64,6 +65,10 @@ async def startup_event():
     settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     settings.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     settings.TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Initialize database
+    logger.info("Initializing database...")
+    init_db()
 
     logger.info("AutoCut API server started successfully")
 

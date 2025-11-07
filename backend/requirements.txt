@@ -9,6 +9,8 @@ python-dotenv==1.0.0
 noisereduce==3.0.0
 librosa==0.10.1
 soundfile==0.12.1
+sqlalchemy==2.0.23
+alembic==1.12.1
 
 # Phase 2 - Transcription & YouTube Optimization
 # IMPORTANT: Install in this exact order to avoid conflicts

@@ -14,12 +14,14 @@ import os
 from ..config import settings
 from ..services.video_processing.processor import VideoProcessor
 from .websocket_manager import ws_manager
+from ..database import SessionLocal, JobRepository
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Store active jobs
+# Legacy: Store active processing jobs (in-memory for WebSocket communication)
+# Database now stores persistent job history
 active_jobs = {}
 
 
@@ -85,22 +87,38 @@ async def upload_video(
 
         logger.info(f"File uploaded: {upload_path}")
 
-        # Store job info
+        # Prepare settings
+        job_settings = {
+            'silence_threshold': silence_threshold,
+            'min_silence_duration': min_silence_duration,
+            'padding': padding,
+            'fps': fps,
+            'detect_filler_words': detect_filler_words,
+            'filler_sensitivity': filler_sensitivity,
+            'whisper_model': whisper_model,
+            'enable_audio_enhancement': enable_audio_enhancement,
+            'noise_reduction_strength': noise_reduction_strength
+        }
+
+        # Store job in database for persistence
+        db = SessionLocal()
+        try:
+            JobRepository.create_job(
+                db=db,
+                job_id=job_id,
+                filename=file.filename,
+                video_path=str(upload_path),
+                settings=job_settings
+            )
+        finally:
+            db.close()
+
+        # Store job info in memory (for active processing)
         active_jobs[job_id] = {
             'status': 'uploaded',
             'video_path': upload_path,
             'filename': file.filename,
-            'settings': {
-                'silence_threshold': silence_threshold,
-                'min_silence_duration': min_silence_duration,
-                'padding': padding,
-                'fps': fps,
-                'detect_filler_words': detect_filler_words,
-                'filler_sensitivity': filler_sensitivity,
-                'whisper_model': whisper_model,
-                'enable_audio_enhancement': enable_audio_enhancement,
-                'noise_reduction_strength': noise_reduction_strength
-            }
+            'settings': job_settings
         }
 
         # Start processing in background
@@ -147,7 +165,15 @@ async def process_video_task(
 ):
     """Background task to process video"""
     try:
+        # Update status in memory
         active_jobs[job_id]['status'] = 'processing'
+
+        # Update status in database
+        db = SessionLocal()
+        try:
+            JobRepository.update_job_status(db, job_id, 'processing')
+        finally:
+            db.close()
 
         # Create processor
         processor = VideoProcessor(
@@ -180,9 +206,16 @@ async def process_video_task(
             progress_callback=progress_callback
         )
 
-        # Update job status
+        # Update job status in memory
         active_jobs[job_id]['status'] = 'completed' if result['success'] else 'failed'
         active_jobs[job_id]['result'] = result
+
+        # Update job in database
+        db = SessionLocal()
+        try:
+            JobRepository.update_job_result(db, job_id, result)
+        finally:
+            db.close()
 
         # Send result to WebSocket clients
         if result['success']:
@@ -192,18 +225,118 @@ async def process_video_task(
 
     except Exception as e:
         logger.error(f"Error processing video: {e}", exc_info=True)
+
+        # Update in memory
         active_jobs[job_id]['status'] = 'failed'
         active_jobs[job_id]['error'] = str(e)
+
+        # Update in database
+        db = SessionLocal()
+        try:
+            JobRepository.update_job_status(db, job_id, 'failed', error=str(e))
+        finally:
+            db.close()
+
         await ws_manager.send_error(job_id, str(e))
 
 
 @router.get("/job/{job_id}")
 async def get_job_status(job_id: str):
     """Get status of a processing job"""
-    if job_id not in active_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+    # First check active jobs (in-memory for current processing)
+    if job_id in active_jobs:
+        return active_jobs[job_id]
 
-    return active_jobs[job_id]
+    # If not in active jobs, check database for completed/failed jobs
+    db = SessionLocal()
+    try:
+        job = JobRepository.get_job(db, job_id)
+        if job:
+            return job.to_dict()
+        else:
+            raise HTTPException(status_code=404, detail="Job not found")
+    finally:
+        db.close()
+
+
+@router.get("/history")
+async def get_job_history(
+    limit: int = 100,
+    offset: int = 0,
+    status: Optional[str] = None
+):
+    """
+    Get job history from database
+
+    Args:
+        limit: Maximum number of jobs to return (default: 100)
+        offset: Offset for pagination (default: 0)
+        status: Filter by status (uploaded, processing, completed, failed)
+
+    Returns:
+        List of jobs with metadata
+    """
+    db = SessionLocal()
+    try:
+        jobs = JobRepository.get_all_jobs(db, limit=limit, offset=offset, status=status)
+        total_count = JobRepository.count_jobs(db, status=status)
+
+        return {
+            "jobs": [job.to_dict() for job in jobs],
+            "total": total_count,
+            "limit": limit,
+            "offset": offset
+        }
+    finally:
+        db.close()
+
+
+@router.get("/stats")
+async def get_statistics():
+    """
+    Get processing statistics
+
+    Returns:
+        Statistics about all jobs
+    """
+    db = SessionLocal()
+    try:
+        total_jobs = JobRepository.count_jobs(db)
+        completed_jobs = JobRepository.count_jobs(db, status='completed')
+        failed_jobs = JobRepository.count_jobs(db, status='failed')
+        processing_jobs = JobRepository.count_jobs(db, status='processing')
+
+        return {
+            "total_jobs": total_jobs,
+            "completed": completed_jobs,
+            "failed": failed_jobs,
+            "processing": processing_jobs,
+            "success_rate": (completed_jobs / total_jobs * 100) if total_jobs > 0 else 0
+        }
+    finally:
+        db.close()
+
+
+@router.delete("/job/{job_id}")
+async def delete_job(job_id: str):
+    """
+    Delete a job from history
+
+    Args:
+        job_id: Job ID to delete
+
+    Returns:
+        Success message
+    """
+    db = SessionLocal()
+    try:
+        success = JobRepository.delete_job(db, job_id)
+        if success:
+            return {"message": "Job deleted successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Job not found")
+    finally:
+        db.close()
 
 
 @router.get("/download/{job_id}/{format}")

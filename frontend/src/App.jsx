@@ -85,6 +85,11 @@ function App() {
   const [optimizationMessage, setOptimizationMessage] = useState('')
   const [optimizationResult, setOptimizationResult] = useState(null)
 
+  // History state
+  const [showHistory, setShowHistory] = useState(false)
+  const [jobHistory, setJobHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+
   const fileInputRef = useRef(null)
   const wsRef = useRef(null)
 
@@ -276,6 +281,39 @@ function App() {
     return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
   }
 
+  const loadHistory = async () => {
+    setHistoryLoading(true)
+    try {
+      const response = await fetch('/api/history?limit=50')
+      if (!response.ok) {
+        throw new Error('Failed to load history')
+      }
+      const data = await response.json()
+      setJobHistory(data.jobs)
+    } catch (err) {
+      console.error('Error loading history:', err)
+      setError('Failed to load job history')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const deleteHistoryJob = async (historyJobId) => {
+    try {
+      const response = await fetch(`/api/job/${historyJobId}`, {
+        method: 'DELETE'
+      })
+      if (!response.ok) {
+        throw new Error('Failed to delete job')
+      }
+      // Reload history after deletion
+      loadHistory()
+    } catch (err) {
+      console.error('Error deleting job:', err)
+      setError('Failed to delete job')
+    }
+  }
+
   const handleTranscribe = async () => {
     if (!jobId) {
       setError('No job ID available')
@@ -343,11 +381,202 @@ function App() {
 
   return (
     <div className="container">
-      <div className="header">
-        <h1>🎬 AutoCut</h1>
-        <p>Automatic Silence Detection & Video Cutting</p>
+      <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>🎬 AutoCut</h1>
+          <p>Automatic Silence Detection & Video Cutting</p>
+        </div>
+        <button
+          onClick={() => {
+            setShowHistory(!showHistory)
+            if (!showHistory) loadHistory()
+          }}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: showHistory ? '#0ea5e9' : '#2a2a2a',
+            color: '#fff',
+            border: showHistory ? '2px solid #0ea5e9' : '2px solid #3a3a3a',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            transition: 'all 0.2s'
+          }}
+        >
+          {showHistory ? '🏠 Nouveau Job' : '📜 Historique'}
+        </button>
       </div>
 
+      {showHistory ? (
+        /* History View */
+        <div style={{ marginTop: '20px' }}>
+          <h2 style={{ color: '#0ea5e9', marginBottom: '20px' }}>📜 Historique des Traitements</h2>
+
+          {historyLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
+              Chargement de l'historique...
+            </div>
+          ) : jobHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
+              Aucun traitement dans l'historique
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gap: '15px'
+            }}>
+              {jobHistory.map((histJob) => (
+                <div
+                  key={histJob.id}
+                  style={{
+                    padding: '20px',
+                    backgroundColor: '#222',
+                    borderRadius: '10px',
+                    border: '1px solid #3a3a3a'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: '10px'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: '0 0 5px 0', color: '#fff' }}>{histJob.filename}</h3>
+                      <div style={{ fontSize: '12px', color: '#888' }}>
+                        {new Date(histJob.created_at).toLocaleString('fr-FR')}
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '5px 12px',
+                      borderRadius: '5px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      backgroundColor: histJob.status === 'completed' ? '#22c55e' : histJob.status === 'failed' ? '#ef4444' : '#fbbf24',
+                      color: '#000'
+                    }}>
+                      {histJob.status === 'completed' ? '✅ Terminé' : histJob.status === 'failed' ? '❌ Échoué' : '⏳ En cours'}
+                    </div>
+                  </div>
+
+                  {histJob.status === 'completed' && histJob.result && (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                      gap: '10px',
+                      marginTop: '15px',
+                      padding: '15px',
+                      backgroundColor: '#1a1a1a',
+                      borderRadius: '8px'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#888' }}>⏱️ Durée finale</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#4ade80' }}>
+                          {formatTime(histJob.duration_seconds || 0)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#888' }}>✂️ Coupes</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#5b9aff' }}>
+                          {histJob.total_cuts}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#888' }}>⚡ Temps gagné</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#a78bfa' }}>
+                          {histJob.percentage_saved?.toFixed(1)}%
+                        </div>
+                      </div>
+                      {histJob.filler_words_detected > 0 && (
+                        <div>
+                          <div style={{ fontSize: '11px', color: '#888' }}>🎤 Hésitations</div>
+                          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fbbf24' }}>
+                            {histJob.filler_words_detected}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {histJob.status === 'completed' && (
+                    <div style={{
+                      marginTop: '15px',
+                      display: 'flex',
+                      gap: '10px'
+                    }}>
+                      {histJob.premiere_pro_export && (
+                        <a
+                          href={`/api/download/${histJob.id}/premiere_pro`}
+                          download
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#0ea5e9',
+                            color: '#fff',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            fontSize: '13px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          📥 Premiere Pro
+                        </a>
+                      )}
+                      {histJob.final_cut_pro_export && (
+                        <a
+                          href={`/api/download/${histJob.id}/final_cut_pro`}
+                          download
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#0ea5e9',
+                            color: '#fff',
+                            borderRadius: '6px',
+                            textDecoration: 'none',
+                            fontSize: '13px',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          📥 Final Cut Pro
+                        </a>
+                      )}
+                      <button
+                        onClick={() => deleteHistoryJob(histJob.id)}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#ef4444',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 'bold',
+                          marginLeft: 'auto'
+                        }}
+                      >
+                        🗑️ Supprimer
+                      </button>
+                    </div>
+                  )}
+
+                  {histJob.status === 'failed' && histJob.error && (
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '10px',
+                      backgroundColor: '#3a1a1a',
+                      borderRadius: '6px',
+                      color: '#ef4444',
+                      fontSize: '13px'
+                    }}>
+                      ⚠️ Erreur: {histJob.error}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Main Processing View */
+        <>
       {!file ? (
         <div
           className={`upload-area ${isDragging ? 'dragover' : ''}`}
@@ -1045,6 +1274,8 @@ function App() {
         <div className="error">
           <strong>❌ Error:</strong> {error}
         </div>
+      )}
+      </>
       )}
     </div>
   )

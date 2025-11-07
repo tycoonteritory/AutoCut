@@ -15,7 +15,12 @@ function App() {
     silenceThreshold: -45,  // Équilibré: détecte les silences sans être trop agressif
     minSilenceDuration: 800,  // 0.8 secondes - bon équilibre
     padding: 250,  // 250ms de marge pour transitions fluides
-    fps: 30
+    fps: 30,
+    detectFillerWords: false,  // Détection des hésitations (euh, hum, etc.)
+    fillerSensitivity: 0.7,  // Sensibilité (0.0-1.0)
+    whisperModel: 'base',  // Modèle Whisper pour la transcription
+    enableAudioEnhancement: false,  // Débruitage audio
+    noiseReductionStrength: 0.7  // Force du débruitage (0.0-1.0)
   })
 
   // Preset configurations
@@ -231,6 +236,11 @@ function App() {
     formData.append('min_silence_duration', settings.minSilenceDuration)
     formData.append('padding', settings.padding)
     formData.append('fps', settings.fps)
+    formData.append('detect_filler_words', settings.detectFillerWords)
+    formData.append('filler_sensitivity', settings.fillerSensitivity)
+    formData.append('whisper_model', settings.whisperModel)
+    formData.append('enable_audio_enhancement', settings.enableAudioEnhancement)
+    formData.append('noise_reduction_strength', settings.noiseReductionStrength)
 
     try {
       const response = await fetch('/api/upload', {
@@ -440,6 +450,117 @@ function App() {
             </div>
           </div>
 
+          {/* Filler Words Detection Section */}
+          <div style={{
+            marginBottom: '25px',
+            padding: '18px',
+            backgroundColor: '#1e293b',
+            borderRadius: '10px',
+            border: '2px solid #334155'
+          }}>
+            <h3 style={{
+              marginTop: 0,
+              marginBottom: '15px',
+              fontSize: '16px',
+              color: '#0ea5e9',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              🎤 Détection d'Hésitations
+            </h3>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                color: '#e2e8f0'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={settings.detectFillerWords}
+                  onChange={(e) => setSettings({ ...settings, detectFillerWords: e.target.checked })}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span>Supprimer les "euh", "hum", "ben", etc.</span>
+              </label>
+            </div>
+
+            {settings.detectFillerWords && (
+              <div style={{
+                marginTop: '15px',
+                paddingTop: '15px',
+                borderTop: '1px solid #334155'
+              }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: '13px',
+                    color: '#94a3b8'
+                  }}>
+                    Sensibilité de détection:
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={settings.fillerSensitivity}
+                    onChange={(e) => setSettings({ ...settings, fillerSensitivity: parseFloat(e.target.value) })}
+                    style={{
+                      width: '100%',
+                      height: '6px',
+                      borderRadius: '3px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '5px',
+                    fontSize: '11px',
+                    color: '#64748b'
+                  }}>
+                    <span>Précis</span>
+                    <span style={{ fontWeight: 'bold', color: '#0ea5e9' }}>
+                      {(settings.fillerSensitivity * 100).toFixed(0)}%
+                    </span>
+                    <span>Agressif</span>
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#0f172a',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#94a3b8',
+                  lineHeight: '1.5'
+                }}>
+                  💡 <strong style={{ color: '#0ea5e9' }}>Cette fonctionnalité détecte :</strong>
+                  <br />
+                  • Les hésitations vocales (euh, heu, euuh)
+                  <br />
+                  • Les sons d'hésitation (hum, hmm)
+                  <br />
+                  • Les mots de remplissage (ben, bah, alors euh, donc euh)
+                  <br />
+                  <br />
+                  ⚠️ <em>Nécessite ~30 secondes de traitement supplémentaire</em>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Advanced mode toggle */}
           <div style={{ textAlign: 'center', marginBottom: '15px' }}>
             <button
@@ -492,6 +613,91 @@ function App() {
                   value={settings.padding}
                   onChange={(e) => setSettings({ ...settings, padding: parseInt(e.target.value) })}
                 />
+              </div>
+
+              {/* Audio Enhancement Section */}
+              <div style={{
+                marginTop: '20px',
+                paddingTop: '15px',
+                borderTop: '1px solid #5a4520'
+              }}>
+                <h4 style={{ marginTop: 0, fontSize: '14px', color: '#fbbf24' }}>
+                  🔊 Amélioration Audio (Expérimental)
+                </h4>
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    color: '#e2e8f0'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={settings.enableAudioEnhancement}
+                      onChange={(e) => setSettings({ ...settings, enableAudioEnhancement: e.target.checked })}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <span>Activer le débruitage audio</span>
+                  </label>
+                </div>
+
+                {settings.enableAudioEnhancement && (
+                  <div style={{ marginTop: '10px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '8px',
+                      fontSize: '12px',
+                      color: '#94a3b8'
+                    }}>
+                      Intensité du débruitage:
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={settings.noiseReductionStrength}
+                      onChange={(e) => setSettings({ ...settings, noiseReductionStrength: parseFloat(e.target.value) })}
+                      style={{
+                        width: '100%',
+                        height: '4px',
+                        borderRadius: '2px',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    />
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginTop: '5px',
+                      fontSize: '10px',
+                      color: '#64748b'
+                    }}>
+                      <span>Léger</span>
+                      <span style={{ fontWeight: 'bold', color: '#fbbf24' }}>
+                        {(settings.noiseReductionStrength * 100).toFixed(0)}%
+                      </span>
+                      <span>Fort</span>
+                    </div>
+                    <div style={{
+                      marginTop: '10px',
+                      padding: '8px',
+                      backgroundColor: '#1a1510',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      color: '#94a3b8',
+                      lineHeight: '1.4'
+                    }}>
+                      ⚠️ Le débruitage améliore la détection mais ajoute ~10s de traitement
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -570,6 +776,15 @@ function App() {
                   {result.silence_periods_removed}
                 </div>
               </div>
+
+              {result.filler_words_detected !== undefined && result.filler_words_detected > 0 && (
+                <div style={{ padding: '10px', backgroundColor: '#222', borderRadius: '6px', border: '1px solid #2a2a2a' }}>
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '5px' }}>🎤 Hésitations Removed</div>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#fbbf24' }}>
+                    {result.filler_words_detected}
+                  </div>
+                </div>
+              )}
 
               <div style={{ padding: '10px', backgroundColor: '#222', borderRadius: '6px', border: '1px solid #2a2a2a', gridColumn: '1 / -1' }}>
                 <div style={{ fontSize: '12px', color: '#888', marginBottom: '5px' }}>⚡ Time Saved</div>

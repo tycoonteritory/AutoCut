@@ -8,6 +8,7 @@ from pydub import AudioSegment
 from pydub.silence import detect_silence, detect_nonsilent
 import subprocess
 import json
+from ..audio_enhancement.enhancer import AudioEnhancer
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,9 @@ class SilenceDetector:
         self,
         silence_thresh: int = -40,
         min_silence_len: int = 500,
-        padding: int = 100
+        padding: int = 100,
+        enable_audio_enhancement: bool = False,
+        noise_reduction_strength: float = 0.7
     ):
         """
         Initialize silence detector
@@ -28,10 +31,24 @@ class SilenceDetector:
             silence_thresh: Silence threshold in dB (default: -40)
             min_silence_len: Minimum silence length in ms (default: 500)
             padding: Padding around cuts in ms (default: 100)
+            enable_audio_enhancement: Enable audio enhancement before detection
+            noise_reduction_strength: Noise reduction strength (0.0-1.0)
         """
         self.silence_thresh = silence_thresh
         self.min_silence_len = min_silence_len
         self.padding = padding
+        self.enable_audio_enhancement = enable_audio_enhancement
+
+        # Initialize audio enhancer if enabled
+        if enable_audio_enhancement:
+            self.audio_enhancer = AudioEnhancer(
+                noise_reduction_strength=noise_reduction_strength,
+                normalize_audio=True
+            )
+            logger.info("Audio enhancement ENABLED")
+        else:
+            self.audio_enhancer = None
+            logger.info("Audio enhancement DISABLED")
 
     def extract_audio(
         self,
@@ -221,6 +238,23 @@ class SilenceDetector:
 
         # Extract audio
         audio_path = self.extract_audio(video_path, progress_callback=progress_callback)
+
+        # Enhance audio if enabled
+        if self.enable_audio_enhancement and self.audio_enhancer:
+            logger.info("Applying audio enhancement...")
+            if progress_callback:
+                progress_callback(32)
+
+            try:
+                # Enhance the audio before detection
+                audio_path = self.audio_enhancer.enhance_for_silence_detection(
+                    audio_path,
+                    progress_callback=progress_callback
+                )
+                logger.info(f"Audio enhanced: {audio_path}")
+            except Exception as e:
+                logger.error(f"Audio enhancement failed: {e}, continuing with original audio", exc_info=True)
+                # Continue with original audio if enhancement fails
 
         # Detect silence
         silence_periods = self.detect_silence_periods(audio_path, progress_callback=progress_callback)

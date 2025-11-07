@@ -39,7 +39,12 @@ async def upload_video(
     silence_threshold: int = Form(-40),
     min_silence_duration: int = Form(500),
     padding: int = Form(100),
-    fps: int = Form(30)
+    fps: int = Form(30),
+    detect_filler_words: bool = Form(False),
+    filler_sensitivity: float = Form(0.7),
+    whisper_model: str = Form("base"),
+    enable_audio_enhancement: bool = Form(False),
+    noise_reduction_strength: float = Form(0.7)
 ):
     """
     Upload a video file for processing
@@ -50,6 +55,11 @@ async def upload_video(
         min_silence_duration: Minimum silence duration in ms (default: 500)
         padding: Padding around cuts in ms (default: 100)
         fps: Frames per second for export (default: 30)
+        detect_filler_words: Enable filler words detection (default: False)
+        filler_sensitivity: Filler detection sensitivity 0.0-1.0 (default: 0.7)
+        whisper_model: Whisper model for filler detection (default: "base")
+        enable_audio_enhancement: Enable audio noise reduction (default: False)
+        noise_reduction_strength: Noise reduction strength 0.0-1.0 (default: 0.7)
 
     Returns:
         Job ID for tracking progress
@@ -84,7 +94,12 @@ async def upload_video(
                 'silence_threshold': silence_threshold,
                 'min_silence_duration': min_silence_duration,
                 'padding': padding,
-                'fps': fps
+                'fps': fps,
+                'detect_filler_words': detect_filler_words,
+                'filler_sensitivity': filler_sensitivity,
+                'whisper_model': whisper_model,
+                'enable_audio_enhancement': enable_audio_enhancement,
+                'noise_reduction_strength': noise_reduction_strength
             }
         }
 
@@ -96,7 +111,12 @@ async def upload_video(
                 silence_threshold,
                 min_silence_duration,
                 padding,
-                fps
+                fps,
+                detect_filler_words,
+                filler_sensitivity,
+                whisper_model,
+                enable_audio_enhancement,
+                noise_reduction_strength
             )
         )
 
@@ -118,7 +138,12 @@ async def process_video_task(
     silence_threshold: int,
     min_silence_duration: int,
     padding: int,
-    fps: int
+    fps: int,
+    detect_filler_words: bool = False,
+    filler_sensitivity: float = 0.7,
+    whisper_model: str = "base",
+    enable_audio_enhancement: bool = False,
+    noise_reduction_strength: float = 0.7
 ):
     """Background task to process video"""
     try:
@@ -129,7 +154,12 @@ async def process_video_task(
             silence_thresh=silence_threshold,
             min_silence_len=min_silence_duration,
             padding=padding,
-            fps=fps
+            fps=fps,
+            detect_filler_words=detect_filler_words,
+            filler_sensitivity=filler_sensitivity,
+            whisper_model=whisper_model,
+            enable_audio_enhancement=enable_audio_enhancement,
+            noise_reduction_strength=noise_reduction_strength
         )
 
         # Progress callback

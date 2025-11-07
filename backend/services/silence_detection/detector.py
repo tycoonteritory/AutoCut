@@ -143,11 +143,12 @@ class SilenceDetector:
             progress_callback(40)
 
         # Detect silence (this can take time for large files)
+        # Use seek_step=10 for good balance between speed and accuracy (10ms precision)
         silence_periods = detect_silence(
             audio,
             min_silence_len=self.min_silence_len,
             silence_thresh=self.silence_thresh,
-            seek_step=1  # Check every 1ms for accuracy
+            seek_step=10  # Check every 10ms - much faster while maintaining precision
         )
 
         if progress_callback:
@@ -187,11 +188,12 @@ class SilenceDetector:
             progress_callback(56)
 
         # Detect non-silent periods (this can take time for large files)
+        # Use seek_step=10 for good balance between speed and accuracy (10ms precision)
         non_silent_periods = detect_nonsilent(
             audio,
             min_silence_len=self.min_silence_len,
             silence_thresh=self.silence_thresh,
-            seek_step=1
+            seek_step=10  # Check every 10ms - much faster while maintaining precision
         )
 
         if progress_callback:

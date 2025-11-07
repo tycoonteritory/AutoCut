@@ -429,12 +429,12 @@ function App() {
             <div style={{
               marginTop: '15px',
               padding: '12px',
-              backgroundColor: '#f8fafc',
+              backgroundColor: '#2a2a2a',
               borderRadius: '6px',
               fontSize: '13px',
-              color: '#475569',
+              color: '#aaa',
               textAlign: 'center',
-              border: '1px solid #e2e8f0'
+              border: '1px solid #3a3a3a'
             }}>
               💡 {presets[presetLevel].description}
             </div>
@@ -462,11 +462,11 @@ function App() {
             <div style={{
               marginTop: '20px',
               padding: '15px',
-              backgroundColor: '#fff8e1',
+              backgroundColor: '#2a2520',
               borderRadius: '8px',
-              border: '1px solid #ffd54f'
+              border: '1px solid #5a4520'
             }}>
-              <h4 style={{ marginTop: 0, fontSize: '14px', color: '#f57c00' }}>
+              <h4 style={{ marginTop: 0, fontSize: '14px', color: '#fbbf24' }}>
                 ⚙️ Paramètres Avancés
               </h4>
               <div className="setting-row">
@@ -536,48 +536,48 @@ function App() {
           <div style={{
             marginTop: '20px',
             padding: '15px',
-            backgroundColor: '#f0f9ff',
+            backgroundColor: '#1a2530',
             borderRadius: '8px',
-            border: '2px solid #0ea5e9'
+            border: '1px solid #2a3a4a'
           }}>
-            <h4 style={{ marginTop: 0, marginBottom: '15px', color: '#0369a1' }}>📊 Statistics</h4>
+            <h4 style={{ marginTop: 0, marginBottom: '15px', color: '#5b9aff' }}>📊 Statistics</h4>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>⏱️ Original Duration</div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#333' }}>
+              <div style={{ padding: '10px', backgroundColor: '#222', borderRadius: '6px', border: '1px solid #2a2a2a' }}>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '5px' }}>⏱️ Original Duration</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e0e0e0' }}>
                   {formatTime(result.duration_seconds)}
                 </div>
               </div>
 
-              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>✂️ Final Duration</div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#22c55e' }}>
+              <div style={{ padding: '10px', backgroundColor: '#222', borderRadius: '6px', border: '1px solid #2a2a2a' }}>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '5px' }}>✂️ Final Duration</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#4ade80' }}>
                   {formatTime(result.kept_duration_seconds)}
                 </div>
               </div>
 
-              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>🎬 Number of Cuts</div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3b82f6' }}>
+              <div style={{ padding: '10px', backgroundColor: '#222', borderRadius: '6px', border: '1px solid #2a2a2a' }}>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '5px' }}>🎬 Number of Cuts</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#5b9aff' }}>
                   {result.total_cuts}
                 </div>
               </div>
 
-              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>🔇 Silences Removed</div>
+              <div style={{ padding: '10px', backgroundColor: '#222', borderRadius: '6px', border: '1px solid #2a2a2a' }}>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '5px' }}>🔇 Silences Removed</div>
                 <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#ef4444' }}>
                   {result.silence_periods_removed}
                 </div>
               </div>
 
-              <div style={{ padding: '10px', backgroundColor: '#fff', borderRadius: '6px', gridColumn: '1 / -1' }}>
-                <div style={{ fontSize: '12px', color: '#666', marginBottom: '5px' }}>⚡ Time Saved</div>
+              <div style={{ padding: '10px', backgroundColor: '#222', borderRadius: '6px', border: '1px solid #2a2a2a', gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: '12px', color: '#888', marginBottom: '5px' }}>⚡ Time Saved</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#8b5cf6' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#a78bfa' }}>
                     {formatTime(result.removed_duration_seconds)}
                   </span>
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#8b5cf6' }}>
+                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#a78bfa' }}>
                     ({result.percentage_saved}%)
                   </span>
                 </div>
@@ -637,7 +637,7 @@ function App() {
               )}
 
               {transcriptionResult && (
-                <div className="results" style={{ marginTop: '15px', backgroundColor: '#f0f9f0' }}>
+                <div className="results" style={{ marginTop: '15px', backgroundColor: '#1a2a1a' }}>
                   <div className="result-item">
                     <strong>✅ Transcription complete!</strong>
                   </div>
@@ -646,12 +646,14 @@ function App() {
                     <div style={{
                       marginTop: '10px',
                       padding: '10px',
-                      backgroundColor: '#fff',
+                      backgroundColor: '#2a2a2a',
                       borderRadius: '5px',
                       maxHeight: '150px',
                       overflow: 'auto',
                       whiteSpace: 'pre-wrap',
-                      fontSize: '14px'
+                      fontSize: '14px',
+                      color: '#e0e0e0',
+                      border: '1px solid #3a3a3a'
                     }}>
                       {transcriptionResult.text || 'No text available'}
                     </div>
@@ -717,7 +719,7 @@ function App() {
                 )}
 
                 {optimizationResult && (
-                  <div className="results" style={{ marginTop: '15px', backgroundColor: '#fff5f5' }}>
+                  <div className="results" style={{ marginTop: '15px', backgroundColor: '#2a1a1a' }}>
                     <div className="result-item">
                       <strong>✅ YouTube optimization complete!</strong>
                     </div>
@@ -744,7 +746,7 @@ function App() {
                               <img
                                 src={thumb.url}
                                 alt={`Thumbnail ${idx + 1}`}
-                                style={{ width: '200px', height: 'auto', borderRadius: '8px', border: '2px solid #ddd' }}
+                                style={{ width: '200px', height: 'auto', borderRadius: '8px', border: '1px solid #3a3a3a' }}
                               />
                               <div style={{ fontSize: '12px', marginTop: '5px' }}>
                                 @ {formatTime(thumb.timestamp)}
@@ -762,10 +764,12 @@ function App() {
                         <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {optimizationResult.tags.map((tag, idx) => (
                             <span key={idx} style={{
-                              backgroundColor: '#e0e0e0',
+                              backgroundColor: '#2a2a2a',
+                              color: '#5b9aff',
                               padding: '5px 10px',
                               borderRadius: '5px',
-                              fontSize: '14px'
+                              fontSize: '14px',
+                              border: '1px solid #3a3a3a'
                             }}>
                               {tag}
                             </span>
@@ -781,10 +785,12 @@ function App() {
                         <pre style={{
                           marginTop: '10px',
                           padding: '15px',
-                          backgroundColor: '#f5f5f5',
+                          backgroundColor: '#2a2a2a',
                           borderRadius: '8px',
                           whiteSpace: 'pre-wrap',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                          color: '#e0e0e0',
+                          border: '1px solid #3a3a3a'
                         }}>
                           {optimizationResult.description}
                         </pre>

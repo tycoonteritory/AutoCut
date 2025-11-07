@@ -83,9 +83,29 @@ fi
 
 source backend/venv/bin/activate
 
-echo "📦 Installing Python dependencies..."
-pip install -q --upgrade pip setuptools wheel
-pip install -q -r backend/requirements.txt
+# Check if new dependencies are installed
+echo "🔍 Checking dependencies..."
+NEED_INSTALL=false
+
+# Check for new v2.0.0 dependencies
+python -c "import sqlalchemy" 2>/dev/null || NEED_INSTALL=true
+python -c "import noisereduce" 2>/dev/null || NEED_INSTALL=true
+python -c "import librosa" 2>/dev/null || NEED_INSTALL=true
+
+if [ "$NEED_INSTALL" = true ]; then
+    echo ""
+    echo -e "${YELLOW}⚠️  New dependencies detected (v2.0.0)${NC}"
+    echo "📦 Installing updated dependencies..."
+    echo "   (This may take 2-3 minutes)"
+    echo ""
+    pip install -q --upgrade pip setuptools wheel
+    pip install -r backend/requirements.txt
+    echo ""
+    echo -e "${GREEN}✓ Dependencies updated successfully!${NC}"
+    echo ""
+else
+    echo -e "${GREEN}✓ All dependencies up to date${NC}"
+fi
 
 # Install Node.js dependencies if needed
 if [ ! -d "frontend/node_modules" ]; then

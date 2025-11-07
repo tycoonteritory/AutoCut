@@ -77,13 +77,16 @@ class VideoProcessor:
                         else:
                             message = "Analyzing video content..."
 
+                        # Log for debugging
+                        logger.info(f"Progress callback: {progress}% - {message}")
+
                         future = asyncio.run_coroutine_threadsafe(
                             progress_callback(progress, message),
                             loop
                         )
                         # Don't wait for result to avoid blocking
                     except Exception as e:
-                        logger.error(f"Error in progress callback: {e}")
+                        logger.error(f"Error in progress callback: {e}", exc_info=True)
 
             # Step 1: Analyze video and detect silences
             # Run in executor to avoid blocking the event loop

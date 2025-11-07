@@ -129,17 +129,20 @@ class SilenceDetector:
         """
         logger.info(f"Loading audio file: {audio_path}")
         if progress_callback:
-            progress_callback(35)
+            progress_callback(32)
 
         # Load audio file
         audio = AudioSegment.from_wav(str(audio_path))
 
         if progress_callback:
-            progress_callback(40)
+            progress_callback(35)
 
         logger.info(f"Detecting silence (threshold: {self.silence_thresh}dB, min: {self.min_silence_len}ms)")
 
-        # Detect silence
+        if progress_callback:
+            progress_callback(40)
+
+        # Detect silence (this can take time for large files)
         silence_periods = detect_silence(
             audio,
             min_silence_len=self.min_silence_len,
@@ -148,7 +151,7 @@ class SilenceDetector:
         )
 
         if progress_callback:
-            progress_callback(60)
+            progress_callback(48)
 
         logger.info(f"Found {len(silence_periods)} silence periods")
         return silence_periods
@@ -170,17 +173,20 @@ class SilenceDetector:
         """
         logger.info(f"Loading audio file: {audio_path}")
         if progress_callback:
-            progress_callback(35)
+            progress_callback(50)
 
         # Load audio file
         audio = AudioSegment.from_wav(str(audio_path))
 
         if progress_callback:
-            progress_callback(40)
+            progress_callback(53)
 
         logger.info(f"Detecting non-silent periods (threshold: {self.silence_thresh}dB, min: {self.min_silence_len}ms)")
 
-        # Detect non-silent periods
+        if progress_callback:
+            progress_callback(56)
+
+        # Detect non-silent periods (this can take time for large files)
         non_silent_periods = detect_nonsilent(
             audio,
             min_silence_len=self.min_silence_len,
@@ -189,7 +195,7 @@ class SilenceDetector:
         )
 
         if progress_callback:
-            progress_callback(60)
+            progress_callback(68)
 
         logger.info(f"Found {len(non_silent_periods)} non-silent periods")
         return non_silent_periods

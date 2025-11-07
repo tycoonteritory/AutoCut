@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 from typing import List, Tuple
 from pathlib import Path
 from datetime import datetime
+from urllib.parse import quote
 import logging
 
 logger = logging.getLogger(__name__)
@@ -79,11 +80,19 @@ class FinalCutProExporter:
         )
 
         # Add media-rep child element (required by DTD)
+        # Build proper file URL with encoding for special characters
+        # For absolute paths on Unix: file:// + encoded_path (where path starts with /)
+        # Example: /Users/test.mp4 → file:///Users/test.mp4
+        file_path_str = str(self.video_path.absolute())
+        # URL-encode special characters (spaces, #, etc.)
+        encoded_path = quote(file_path_str, safe='/:')  # Keep / and : safe
+        file_url = f"file://{encoded_path}"
+
         media_rep = ET.SubElement(
             asset,
             'media-rep',
             kind='original-media',
-            src=f"file:///{self.video_path.as_posix()}"  # Use 3 slashes for file URLs
+            src=file_url
         )
 
         # Library

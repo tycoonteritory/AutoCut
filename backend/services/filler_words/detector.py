@@ -124,7 +124,7 @@ class FillerWordsDetector:
 
             # Check if segment is a filler word
             if self._is_filler_word(text):
-                logger.debug(f"Filler word detected: '{text}' at {start_ms}ms - {end_ms}ms")
+                logger.info(f"✓ Filler detected: '{text}' at {start_ms}ms - {end_ms}ms ({duration_ms}ms)")
                 filler_segments.append((start_ms, end_ms, text))
                 continue
 
@@ -140,7 +140,7 @@ class FillerWordsDetector:
                         word_start_ms = start_ms + int(i * word_duration)
                         word_end_ms = word_start_ms + int(word_duration)
 
-                        logger.debug(f"Partial filler detected: '{word}' at {word_start_ms}ms")
+                        logger.info(f"✓ Partial filler: '{word}' at {word_start_ms}ms (in '{text}')")
                         filler_segments.append((word_start_ms, word_end_ms, word))
 
         return filler_segments
@@ -259,10 +259,17 @@ class FillerWordsDetector:
             all_cuts.append((start, end, "silence"))
 
         for start, end in filler_periods:
-            # Add padding around filler words
-            padded_start = max(0, start - padding)
-            padded_end = end + padding
+            # Add EXTRA padding around filler words (2x normal padding)
+            # Because filler words need more margin than silences
+            filler_padding = padding * 2
+            padded_start = max(0, start - filler_padding)
+            padded_end = end + filler_padding
             all_cuts.append((padded_start, padded_end, "filler"))
+
+            logger.debug(
+                f"Filler word: {start}ms-{end}ms → Cut: {padded_start}ms-{padded_end}ms "
+                f"(padding: {filler_padding}ms)"
+            )
 
         # Sort by start time
         all_cuts.sort(key=lambda x: x[0])

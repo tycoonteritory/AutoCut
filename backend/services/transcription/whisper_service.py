@@ -76,12 +76,16 @@ class WhisperTranscriptionService:
             logger.info(f"Transcribing audio: {audio_path}")
 
             # Transcribe with Whisper
+            # IMPORTANT: Keep all filler words and hesitations!
             result = self.model.transcribe(
                 str(audio_path),
                 language=self.language,
                 task="transcribe",
                 verbose=False,
-                fp16=False  # Disable FP16 for better compatibility
+                fp16=False,  # Disable FP16 for better compatibility
+                condition_on_previous_text=False,  # Don't filter based on context
+                suppress_tokens="",  # Don't suppress any tokens (keep "euh", "hmm", etc.)
+                word_timestamps=False  # We use segment timestamps
             )
 
             # Debug logging

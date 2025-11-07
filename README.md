@@ -2,20 +2,32 @@
 
 AutoCut est une application web locale qui détecte automatiquement les silences dans vos vidéos et génère des fichiers de montage compatibles avec **Adobe Premiere Pro** et **Final Cut Pro X**.
 
-![AutoCut](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![AutoCut](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-green.svg)
 ![Node](https://img.shields.io/badge/node-18+-green.svg)
 
+## 🆕 Nouveautés v2.0.0
+
+- 🎤 **Détection d'hésitations vocales** - Supprime automatiquement les "euh", "hum", "ben", etc.
+- 🔊 **Amélioration audio** - Débruitage avant détection pour plus de précision
+- 💾 **Persistance des jobs** - Base de données SQLite, survit aux redémarrages
+- 📜 **Historique complet** - Consultez tous vos traitements passés avec statistiques
+
+> **📥 Mise à jour ?** Consultez [UPDATE.md](UPDATE.md) pour les instructions
+
 ## ✨ Fonctionnalités
 
+**Phase 1 - Détection & Coupe :**
 - 🎯 **Détection automatique des silences** dans vos vidéos MP4/MOV
+- 🎤 **Détection des hésitations** vocales (euh, hum, ben, etc.) - **NOUVEAU**
+- 🔊 **Débruitage audio** optionnel pour meilleure précision - **NOUVEAU**
 - ✂️ **Coupes intelligentes** basées sur l'analyse audio
 - 📤 **Export XML** compatible Premiere Pro et Final Cut Pro X
 - 📊 **Progression en temps réel** via WebSocket
+- 💾 **Historique persistant** avec statistiques - **NOUVEAU**
 - 💪 **Gestion de fichiers volumineux** (>1h de vidéo)
 - 🎨 **Interface web moderne** et intuitive
 - ⚙️ **Paramètres ajustables** (seuil, durée minimale, padding)
-- 🏗️ **Architecture atomique** pour faciliter l'évolution
 
 ## 🚀 Installation Rapide
 

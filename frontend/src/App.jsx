@@ -1103,14 +1103,15 @@ function App() {
                     </div>
                   </div>
                   <div className="download-section">
-                    <h4>📥 Download Transcription:</h4>
+                    <h4>📥 Télécharger la Transcription :</h4>
                     {transcriptionResult.srt_path && (
                       <a
                         href={`/api/download-transcription/${jobId}/srt`}
                         className="download-btn"
                         download
+                        title="Format sous-titres avec timecodes"
                       >
-                        SRT (Subtitles)
+                        📄 SRT (avec timecodes)
                       </a>
                     )}
                     {transcriptionResult.vtt_path && (
@@ -1118,8 +1119,9 @@ function App() {
                         href={`/api/download-transcription/${jobId}/vtt`}
                         className="download-btn"
                         download
+                        title="Format web video avec timecodes"
                       >
-                        VTT (Web Video)
+                        📄 VTT (avec timecodes)
                       </a>
                     )}
                     {transcriptionResult.txt_path && (
@@ -1127,10 +1129,23 @@ function App() {
                         href={`/api/download-transcription/${jobId}/txt`}
                         className="download-btn"
                         download
+                        title="Texte brut sans timecodes - Idéal pour réutiliser sans coût de transcription"
+                        style={{ backgroundColor: '#22c55e' }}
                       >
-                        TXT (Plain Text)
+                        📝 TXT (SANS timecodes) 💰
                       </a>
                     )}
+                  </div>
+                  <div style={{
+                    marginTop: '10px',
+                    padding: '12px',
+                    backgroundColor: '#1a2a1a',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: '#4ade80',
+                    border: '1px solid #2a4a2a'
+                  }}>
+                    💡 <strong>Astuce :</strong> Le fichier TXT contient uniquement le texte sans timecodes. Parfait pour réutiliser la transcription avec d'autres outils AI sans avoir à payer OpenAI à nouveau !
                   </div>
                 </div>
               )}
@@ -1171,12 +1186,43 @@ function App() {
                     {/* Titles */}
                     {optimizationResult.titles && optimizationResult.titles.length > 0 && (
                       <div style={{ marginTop: '15px' }}>
-                        <strong>📝 Suggested Titles:</strong>
-                        <ul style={{ marginTop: '10px', paddingLeft: '20px' }}>
+                        <strong>📝 Suggestions de Titres YouTube :</strong>
+                        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {optimizationResult.titles.map((title, idx) => (
-                            <li key={idx}>{title}</li>
+                            <div key={idx} style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '12px',
+                              backgroundColor: '#2a2a2a',
+                              borderRadius: '6px',
+                              border: '1px solid #3a3a3a'
+                            }}>
+                              <span style={{ fontSize: '14px', color: '#e0e0e0', flex: 1 }}>
+                                <strong style={{ color: '#0ea5e9' }}>#{idx + 1}</strong> {title}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(title);
+                                  alert(`Titre #${idx + 1} copié ! 📋`);
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: '#0ea5e9',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: 'bold',
+                                  marginLeft: '10px'
+                                }}
+                              >
+                                📋 Copier
+                              </button>
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     )}
 
@@ -1225,7 +1271,27 @@ function App() {
                     {/* Description */}
                     {optimizationResult.description && (
                       <div style={{ marginTop: '15px' }}>
-                        <strong>📄 Description:</strong>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <strong>📄 Description YouTube :</strong>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(optimizationResult.description);
+                              alert('Description copiée dans le presse-papiers ! 📋');
+                            }}
+                            style={{
+                              padding: '8px 16px',
+                              backgroundColor: '#0ea5e9',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            📋 Copier
+                          </button>
+                        </div>
                         <pre style={{
                           marginTop: '10px',
                           padding: '15px',
@@ -1234,7 +1300,9 @@ function App() {
                           whiteSpace: 'pre-wrap',
                           fontSize: '14px',
                           color: '#e0e0e0',
-                          border: '1px solid #3a3a3a'
+                          border: '1px solid #3a3a3a',
+                          maxHeight: '200px',
+                          overflowY: 'auto'
                         }}>
                           {optimizationResult.description}
                         </pre>
@@ -1244,13 +1312,57 @@ function App() {
                     {/* Chapters */}
                     {optimizationResult.chapters && optimizationResult.chapters.length > 0 && (
                       <div style={{ marginTop: '15px' }}>
-                        <strong>📑 Chapters:</strong>
-                        <div style={{ marginTop: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <strong>📑 Chapitres YouTube (à copier dans la description) :</strong>
+                          <button
+                            onClick={() => {
+                              const chaptersText = optimizationResult.chapters
+                                .map(chapter => `${chapter.time} ${chapter.title}`)
+                                .join('\n');
+                              navigator.clipboard.writeText(chaptersText);
+                              alert('Chapitres copiés dans le presse-papiers ! 📋');
+                            }}
+                            style={{
+                              padding: '8px 16px',
+                              backgroundColor: '#0ea5e9',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            📋 Copier pour YouTube
+                          </button>
+                        </div>
+                        <div style={{
+                          marginTop: '10px',
+                          padding: '15px',
+                          backgroundColor: '#2a2a2a',
+                          borderRadius: '8px',
+                          fontFamily: 'monospace',
+                          fontSize: '14px',
+                          maxHeight: '300px',
+                          overflowY: 'auto',
+                          border: '1px solid #3a3a3a'
+                        }}>
                           {optimizationResult.chapters.map((chapter, idx) => (
-                            <div key={idx} style={{ marginBottom: '8px' }}>
-                              <code>{chapter.timestamp}</code> - {chapter.title}
+                            <div key={idx} style={{ marginBottom: '8px', color: '#e0e0e0' }}>
+                              <span style={{ color: '#0ea5e9', fontWeight: 'bold' }}>{chapter.time}</span> {chapter.title}
                             </div>
                           ))}
+                        </div>
+                        <div style={{
+                          marginTop: '8px',
+                          padding: '10px',
+                          backgroundColor: '#1a2a1a',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          color: '#4ade80',
+                          border: '1px solid #2a4a2a'
+                        }}>
+                          💡 Astuce : Collez ce chapitrage directement dans votre description YouTube pour améliorer la navigation de vos viewers !
                         </div>
                       </div>
                     )}

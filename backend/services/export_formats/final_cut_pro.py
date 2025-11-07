@@ -73,6 +73,7 @@ class FinalCutProExporter:
             name=self.video_path.stem,
             start='0s',
             duration=f"{video_duration_seconds:.3f}s",
+            format='r1',  # Must reference format resource
             hasVideo='1',
             hasAudio='1'
         )
@@ -82,7 +83,7 @@ class FinalCutProExporter:
             asset,
             'media-rep',
             kind='original-media',
-            src=f"file:///{self.video_path.as_posix()}"
+            src=f"file:///{self.video_path.as_posix()}"  # Use 3 slashes for file URLs
         )
 
         # Library

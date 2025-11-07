@@ -9,12 +9,65 @@ function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [jobId, setJobId] = useState(null)
+  const [presetLevel, setPresetLevel] = useState(3) // 1-5, défaut = 3 (Normal)
+  const [advancedMode, setAdvancedMode] = useState(false)
   const [settings, setSettings] = useState({
     silenceThreshold: -45,  // Équilibré: détecte les silences sans être trop agressif
     minSilenceDuration: 800,  // 0.8 secondes - bon équilibre
     padding: 250,  // 250ms de marge pour transitions fluides
     fps: 30
   })
+
+  // Preset configurations
+  const presets = {
+    1: { // Très conservateur - Peu de coupes
+      silenceThreshold: -50,
+      minSilenceDuration: 1500,
+      padding: 400,
+      label: 'Très Conservateur',
+      description: 'Garde presque toutes les pauses naturelles'
+    },
+    2: { // Conservateur
+      silenceThreshold: -47,
+      minSilenceDuration: 1100,
+      padding: 325,
+      label: 'Conservateur',
+      description: 'Coupe les longs silences uniquement'
+    },
+    3: { // Normal (défaut actuel)
+      silenceThreshold: -45,
+      minSilenceDuration: 800,
+      padding: 250,
+      label: 'Normal',
+      description: 'Bon équilibre entre fluidité et efficacité'
+    },
+    4: { // Agressif
+      silenceThreshold: -42,
+      minSilenceDuration: 600,
+      padding: 150,
+      label: 'Agressif',
+      description: 'Coupe davantage de pauses et silences'
+    },
+    5: { // Très agressif - Beaucoup de coupes
+      silenceThreshold: -38,
+      minSilenceDuration: 400,
+      padding: 100,
+      label: 'Très Agressif',
+      description: 'Tempo rapide, coupe un maximum'
+    }
+  }
+
+  // Update settings when preset level changes
+  const handlePresetChange = (level) => {
+    setPresetLevel(level)
+    const preset = presets[level]
+    setSettings({
+      ...settings,
+      silenceThreshold: preset.silenceThreshold,
+      minSilenceDuration: preset.minSilenceDuration,
+      padding: preset.padding
+    })
+  }
 
   // Phase 2 state
   const [isTranscribing, setIsTranscribing] = useState(false)
@@ -323,31 +376,126 @@ function App() {
 
       {file && !isProcessing && !result && (
         <div className="settings">
-          <h3>⚙️ Settings</h3>
-          <div className="setting-row">
-            <label>Silence Threshold (dB):</label>
+          <h3>⚙️ Niveau de Coupe</h3>
+
+          {/* Preset Slider */}
+          <div style={{ marginBottom: '30px' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: '10px',
+              fontSize: '13px',
+              color: '#666'
+            }}>
+              <span>⬅️ Moins de coupes</span>
+              <span style={{ fontWeight: 'bold', color: '#0ea5e9' }}>
+                {presets[presetLevel].label}
+              </span>
+              <span>Plus de coupes ➡️</span>
+            </div>
+
             <input
-              type="number"
-              value={settings.silenceThreshold}
-              onChange={(e) => setSettings({ ...settings, silenceThreshold: parseInt(e.target.value) })}
+              type="range"
+              min="1"
+              max="5"
+              value={presetLevel}
+              onChange={(e) => handlePresetChange(parseInt(e.target.value))}
+              style={{
+                width: '100%',
+                height: '8px',
+                borderRadius: '4px',
+                background: `linear-gradient(to right, #22c55e 0%, #0ea5e9 50%, #ef4444 100%)`,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
             />
+
+            {/* Level markers */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginTop: '5px',
+              fontSize: '11px',
+              color: '#999'
+            }}>
+              <span>1</span>
+              <span>2</span>
+              <span>3</span>
+              <span>4</span>
+              <span>5</span>
+            </div>
+
+            {/* Description */}
+            <div style={{
+              marginTop: '15px',
+              padding: '12px',
+              backgroundColor: '#f8fafc',
+              borderRadius: '6px',
+              fontSize: '13px',
+              color: '#475569',
+              textAlign: 'center',
+              border: '1px solid #e2e8f0'
+            }}>
+              💡 {presets[presetLevel].description}
+            </div>
           </div>
-          <div className="setting-row">
-            <label>Min Silence Duration (ms):</label>
-            <input
-              type="number"
-              value={settings.minSilenceDuration}
-              onChange={(e) => setSettings({ ...settings, minSilenceDuration: parseInt(e.target.value) })}
-            />
+
+          {/* Advanced mode toggle */}
+          <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+            <button
+              onClick={() => setAdvancedMode(!advancedMode)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#0ea5e9',
+                fontSize: '13px',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              {advancedMode ? '🔼 Masquer paramètres avancés' : '🔽 Afficher paramètres avancés'}
+            </button>
           </div>
-          <div className="setting-row">
-            <label>Padding (ms):</label>
-            <input
-              type="number"
-              value={settings.padding}
-              onChange={(e) => setSettings({ ...settings, padding: parseInt(e.target.value) })}
-            />
-          </div>
+
+          {/* Advanced settings - hidden by default */}
+          {advancedMode && (
+            <div style={{
+              marginTop: '20px',
+              padding: '15px',
+              backgroundColor: '#fff8e1',
+              borderRadius: '8px',
+              border: '1px solid #ffd54f'
+            }}>
+              <h4 style={{ marginTop: 0, fontSize: '14px', color: '#f57c00' }}>
+                ⚙️ Paramètres Avancés
+              </h4>
+              <div className="setting-row">
+                <label>Silence Threshold (dB):</label>
+                <input
+                  type="number"
+                  value={settings.silenceThreshold}
+                  onChange={(e) => setSettings({ ...settings, silenceThreshold: parseInt(e.target.value) })}
+                />
+              </div>
+              <div className="setting-row">
+                <label>Min Silence Duration (ms):</label>
+                <input
+                  type="number"
+                  value={settings.minSilenceDuration}
+                  onChange={(e) => setSettings({ ...settings, minSilenceDuration: parseInt(e.target.value) })}
+                />
+              </div>
+              <div className="setting-row">
+                <label>Padding (ms):</label>
+                <input
+                  type="number"
+                  value={settings.padding}
+                  onChange={(e) => setSettings({ ...settings, padding: parseInt(e.target.value) })}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="setting-row">
             <label>FPS:</label>
             <input

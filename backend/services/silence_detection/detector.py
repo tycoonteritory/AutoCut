@@ -8,6 +8,8 @@ from pydub import AudioSegment
 from pydub.silence import detect_silence, detect_nonsilent
 import subprocess
 import json
+import threading
+import queue
 from ..audio_enhancement.enhancer import AudioEnhancer
 
 logger = logging.getLogger(__name__)
@@ -92,24 +94,71 @@ class SilenceDetector:
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            universal_newlines=True
+            universal_newlines=True,
+            bufsize=1
         )
 
-        # Monitor progress
-        for line in process.stdout:
-            if line.startswith('out_time_ms='):
-                try:
-                    time_ms = int(line.split('=')[1]) / 1000000  # Convert to seconds
-                    if duration > 0 and progress_callback:
-                        progress = min((time_ms / duration) * 30, 30)  # 0-30% for audio extraction
-                        progress_callback(progress)
-                except (ValueError, IndexError):
-                    pass
+        # Create queues for thread-safe reading
+        stdout_queue = queue.Queue()
+        stderr_queue = queue.Queue()
 
+        def read_stdout():
+            """Read stdout in a separate thread to prevent blocking"""
+            try:
+                for line in process.stdout:
+                    stdout_queue.put(line)
+            except Exception as e:
+                logger.error(f"Error reading stdout: {e}")
+            finally:
+                process.stdout.close()
+
+        def read_stderr():
+            """Read stderr in a separate thread to prevent buffer overflow"""
+            try:
+                for line in process.stderr:
+                    stderr_queue.put(line)
+            except Exception as e:
+                logger.error(f"Error reading stderr: {e}")
+            finally:
+                process.stderr.close()
+
+        # Start threads to read stdout and stderr
+        stdout_thread = threading.Thread(target=read_stdout, daemon=True)
+        stderr_thread = threading.Thread(target=read_stderr, daemon=True)
+        stdout_thread.start()
+        stderr_thread.start()
+
+        # Monitor progress from stdout queue
+        while process.poll() is None or not stdout_queue.empty():
+            try:
+                line = stdout_queue.get(timeout=0.1)
+                if line.startswith('out_time_ms='):
+                    try:
+                        time_ms = int(line.split('=')[1]) / 1000000  # Convert to seconds
+                        if duration > 0 and progress_callback:
+                            progress = min((time_ms / duration) * 30, 30)  # 0-30% for audio extraction
+                            progress_callback(progress)
+                    except (ValueError, IndexError):
+                        pass
+            except queue.Empty:
+                continue
+
+        # Wait for process to complete
         process.wait()
 
+        # Wait for threads to finish
+        stdout_thread.join(timeout=1)
+        stderr_thread.join(timeout=1)
+
         if process.returncode != 0:
-            error = process.stderr.read()
+            # Collect all stderr messages
+            stderr_lines = []
+            while not stderr_queue.empty():
+                try:
+                    stderr_lines.append(stderr_queue.get_nowait())
+                except queue.Empty:
+                    break
+            error = ''.join(stderr_lines)
             raise RuntimeError(f"Failed to extract audio: {error}")
 
         logger.info(f"Audio extracted to {output_path}")

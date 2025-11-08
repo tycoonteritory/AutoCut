@@ -87,35 +87,74 @@ if [ ! -d "backend/venv" ]; then
 fi
 
 echo "========================================"
-echo "    Mise à jour des dépendances"
+echo "    Vérification des dépendances"
 echo "========================================"
 echo ""
 
-# Install Python dependencies
-echo "Mise à jour des dépendances Python..."
+# Activate virtual environment
 source backend/venv/bin/activate
-pip install --upgrade pip setuptools wheel
-pip install -r backend/requirements.txt
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}[ERREUR] Échec de l'installation des dépendances Python${NC}"
-    exit 1
+# Function to check if Python package is installed
+check_python_package() {
+    python -c "import $1" 2>/dev/null
+    return $?
+}
+
+# Check critical Python dependencies
+PYTHON_DEPS_MISSING=false
+echo "Vérification des dépendances Python critiques..."
+
+if ! check_python_package "fastapi"; then
+    echo -e "${YELLOW}[!] FastAPI non installé${NC}"
+    PYTHON_DEPS_MISSING=true
+elif ! check_python_package "uvicorn"; then
+    echo -e "${YELLOW}[!] Uvicorn non installé${NC}"
+    PYTHON_DEPS_MISSING=true
+elif ! check_python_package "sqlalchemy"; then
+    echo -e "${YELLOW}[!] SQLAlchemy non installé${NC}"
+    PYTHON_DEPS_MISSING=true
+else
+    echo -e "${GREEN}[OK] Dépendances Python principales présentes${NC}"
 fi
 
-echo -e "${GREEN}[OK] Dépendances Python à jour${NC}"
+# Install Python dependencies if needed
+if [ "$PYTHON_DEPS_MISSING" = true ]; then
+    echo ""
+    echo -e "${YELLOW}Installation des dépendances Python manquantes...${NC}"
+    echo "Cela peut prendre plusieurs minutes (PyTorch + CUDA = ~5GB)"
+    echo ""
 
-# Install Node.js dependencies
-echo "Mise à jour des dépendances Node.js..."
-cd frontend
-npm install
-if [ $? -ne 0 ]; then
-    echo -e "${RED}[ERREUR] Échec de l'installation des dépendances Node.js${NC}"
+    pip install --upgrade pip setuptools wheel -q
+    pip install -r backend/requirements.txt
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}[ERREUR] Échec de l'installation des dépendances Python${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}[OK] Dépendances Python installées avec succès${NC}"
+else
+    echo -e "${BLUE}[INFO] Dépendances Python déjà installées, pas de mise à jour nécessaire${NC}"
+fi
+
+# Check Node.js dependencies
+echo ""
+echo "Vérification des dépendances Node.js..."
+if [ ! -d "frontend/node_modules" ] || [ ! -f "frontend/node_modules/.package-lock.json" ]; then
+    echo -e "${YELLOW}[!] Dépendances Node.js manquantes${NC}"
+    echo "Installation des dépendances Node.js..."
+    cd frontend
+    npm install
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}[ERREUR] Échec de l'installation des dépendances Node.js${NC}"
+        cd ..
+        exit 1
+    fi
     cd ..
-    exit 1
+    echo -e "${GREEN}[OK] Dépendances Node.js installées${NC}"
+else
+    echo -e "${GREEN}[OK] Dépendances Node.js déjà installées${NC}"
 fi
-cd ..
 
-echo -e "${GREEN}[OK] Dépendances Node.js à jour${NC}"
 echo ""
 
 echo "========================================"
@@ -158,6 +197,34 @@ fi
 echo "Attente du démarrage du backend..."
 sleep 5
 
+# Verify backend is running
+echo "Vérification du backend..."
+MAX_RETRIES=10
+RETRY_COUNT=0
+BACKEND_OK=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if curl -s http://localhost:8765/health > /dev/null 2>&1; then
+        echo -e "${GREEN}[OK] Backend démarré avec succès!${NC}"
+        BACKEND_OK=true
+        break
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "Attente du backend... ($RETRY_COUNT/$MAX_RETRIES)"
+    sleep 2
+done
+
+if [ "$BACKEND_OK" = false ]; then
+    echo -e "${RED}[ERREUR] Le backend n'a pas démarré correctement${NC}"
+    echo "Veuillez vérifier les logs dans la fenêtre du backend"
+    echo ""
+    echo "Pour diagnostic manuel:"
+    echo "  curl http://localhost:8765/health"
+    echo ""
+    exit 1
+fi
+
+echo ""
 echo "Démarrage du frontend..."
 echo ""
 

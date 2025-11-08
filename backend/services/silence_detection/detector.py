@@ -8,6 +8,8 @@ from pydub import AudioSegment
 from pydub.silence import detect_silence, detect_nonsilent
 import subprocess
 import json
+import threading
+import queue
 from ..audio_enhancement.enhancer import AudioEnhancer
 
 logger = logging.getLogger(__name__)
@@ -84,32 +86,70 @@ class SilenceDetector:
             '-ar', '44100',  # 44.1kHz sample rate
             '-ac', '2',  # Stereo
             '-y',  # Overwrite output file
-            '-progress', 'pipe:1',  # Progress to stdout
+            '-progress', 'pipe:2',  # Progress to stderr (unbuffered)
             str(output_path)
         ]
 
         process = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,  # Ignore stdout
             stderr=subprocess.PIPE,
-            universal_newlines=True
+            universal_newlines=True,
+            bufsize=0  # Unbuffered for real-time progress
         )
 
-        # Monitor progress
-        for line in process.stdout:
-            if line.startswith('out_time_ms='):
-                try:
-                    time_ms = int(line.split('=')[1]) / 1000000  # Convert to seconds
-                    if duration > 0 and progress_callback:
-                        progress = min((time_ms / duration) * 30, 30)  # 0-30% for audio extraction
-                        progress_callback(progress)
-                except (ValueError, IndexError):
-                    pass
+        # Create queue for thread-safe reading of stderr
+        stderr_queue = queue.Queue()
+        last_progress = [0.0]  # Use list to allow mutation in nested function
 
+        def read_stderr():
+            """Read stderr in a separate thread to prevent buffer overflow"""
+            try:
+                for line in process.stderr:
+                    stderr_queue.put(('line', line))
+
+                    # Parse progress in the thread for immediate feedback
+                    line = line.strip()
+                    if line.startswith('out_time_ms='):
+                        try:
+                            time_str = line.split('=')[1].strip()
+                            time_ms = int(time_str) / 1000000  # Convert to seconds
+                            if duration > 0 and progress_callback:
+                                progress = min((time_ms / duration) * 30, 30)
+                                # Only call if progress increased significantly (avoid spam)
+                                if progress - last_progress[0] >= 0.5 or progress >= 30:
+                                    last_progress[0] = progress
+                                    progress_callback(progress)
+                        except (ValueError, IndexError):
+                            pass
+            except Exception as e:
+                logger.error(f"Error reading stderr: {e}")
+                stderr_queue.put(('error', str(e)))
+            finally:
+                stderr_queue.put(('done', None))
+                process.stderr.close()
+
+        # Start thread to read stderr (non-daemon to ensure all output is read)
+        stderr_thread = threading.Thread(target=read_stderr, daemon=False)
+        stderr_thread.start()
+
+        # Wait for process to complete
         process.wait()
 
+        # Wait for stderr thread to finish reading all output
+        stderr_thread.join(timeout=5)
+
         if process.returncode != 0:
-            error = process.stderr.read()
+            # Collect all stderr messages for error reporting
+            stderr_lines = []
+            while not stderr_queue.empty():
+                try:
+                    msg_type, msg_content = stderr_queue.get_nowait()
+                    if msg_type == 'line':
+                        stderr_lines.append(msg_content)
+                except queue.Empty:
+                    break
+            error = ''.join(stderr_lines)
             raise RuntimeError(f"Failed to extract audio: {error}")
 
         logger.info(f"Audio extracted to {output_path}")

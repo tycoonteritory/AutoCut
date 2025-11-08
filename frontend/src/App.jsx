@@ -1,5 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 
+// Utility function to handle fetch errors
+const getFetchErrorMessage = (err) => {
+  if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+    return '❌ Impossible de se connecter au serveur backend. Vérifiez que le serveur est démarré sur le port 8765.'
+  }
+  return err.message || 'Une erreur est survenue'
+}
+
 function App() {
   const [processingMode, setProcessingMode] = useState(null) // 'local' or 'gpt4'
   const [file, setFile] = useState(null)
@@ -287,7 +295,7 @@ function App() {
 
     } catch (err) {
       console.error('Upload error:', err)
-      setError(err.message || 'Failed to upload file')
+      setError(getFetchErrorMessage(err))
       setIsProcessing(false)
     }
   }
@@ -316,7 +324,7 @@ function App() {
       setJobHistory(data.jobs)
     } catch (err) {
       console.error('Error loading history:', err)
-      setError('Failed to load job history')
+      setError(getFetchErrorMessage(err))
     } finally {
       setHistoryLoading(false)
     }
@@ -334,7 +342,7 @@ function App() {
       loadHistory()
     } catch (err) {
       console.error('Error deleting job:', err)
-      setError('Failed to delete job')
+      setError(getFetchErrorMessage(err))
     }
   }
 
@@ -379,7 +387,7 @@ function App() {
 
     } catch (err) {
       console.error('Error loading job details:', err)
-      setError('Failed to load job details')
+      setError(getFetchErrorMessage(err))
     }
   }
 
@@ -408,7 +416,7 @@ function App() {
 
     } catch (err) {
       console.error('Transcription error:', err)
-      setError(err.message || 'Failed to start transcription')
+      setError(getFetchErrorMessage(err))
       setIsTranscribing(false)
     }
   }
@@ -443,7 +451,7 @@ function App() {
 
     } catch (err) {
       console.error('Optimization error:', err)
-      setError(err.message || 'Failed to start YouTube optimization')
+      setError(getFetchErrorMessage(err))
       setIsOptimizing(false)
     }
   }
@@ -493,7 +501,7 @@ function App() {
 
     } catch (err) {
       console.error('Clips generation error:', err)
-      setError(err.message || 'Failed to start clips generation')
+      setError(getFetchErrorMessage(err))
       setIsGeneratingClips(false)
     }
   }

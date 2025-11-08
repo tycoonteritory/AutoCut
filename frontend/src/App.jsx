@@ -1599,6 +1599,47 @@ function App() {
                                   💡 {clip.why_interesting}
                                 </div>
                               )}
+                              {clip.hashtags && clip.hashtags.length > 0 && (
+                                <div style={{ marginTop: '12px' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <strong style={{ fontSize: '12px', color: '#888' }}>🏷️ Hashtags YouTube :</strong>
+                                    <button
+                                      onClick={() => {
+                                        const hashtagsText = clip.hashtags.join(' ');
+                                        navigator.clipboard.writeText(hashtagsText);
+                                        alert('Hashtags copiés ! 📋');
+                                      }}
+                                      style={{
+                                        padding: '4px 10px',
+                                        backgroundColor: '#0ea5e9',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold'
+                                      }}
+                                    >
+                                      📋 Copier
+                                    </button>
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                    {clip.hashtags.map((tag, tagIdx) => (
+                                      <span key={tagIdx} style={{
+                                        backgroundColor: '#1a1a2a',
+                                        color: '#a78bfa',
+                                        padding: '4px 10px',
+                                        borderRadius: '12px',
+                                        fontSize: '12px',
+                                        border: '1px solid #2a2a4a',
+                                        fontWeight: '500'
+                                      }}>
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1674,6 +1715,8 @@ function App() {
         <div className="error">
           <strong>❌ Error:</strong> {error}
         </div>
+      )}
+      </>
       )}
     </div>
   )

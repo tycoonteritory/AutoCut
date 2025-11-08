@@ -130,9 +130,11 @@ class ClipExtractor:
 
             # Add format-specific filters
             if format == "vertical":
-                # Crop to 9:16 aspect ratio (center crop)
+                # Crop to 9:16 aspect ratio (CENTER crop - focus on subject)
+                # crop=width:height:x:y where x,y is top-left corner
+                # For center crop: x=(iw-ow)/2, which crops from center
                 cmd.extend([
-                    "-vf", "crop=ih*9/16:ih,scale=1080:1920",
+                    "-vf", "crop=ih*9/16:ih:(iw-ih*9/16)/2:0,scale=1080:1920",
                     "-aspect", "9:16"
                 ])
             else:

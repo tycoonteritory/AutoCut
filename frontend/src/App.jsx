@@ -85,6 +85,13 @@ function App() {
   const [optimizationMessage, setOptimizationMessage] = useState('')
   const [optimizationResult, setOptimizationResult] = useState(null)
 
+  const [isGeneratingClips, setIsGeneratingClips] = useState(false)
+  const [clipsProgress, setClipsProgress] = useState(0)
+  const [clipsMessage, setClipsMessage] = useState('')
+  const [clipsResult, setClipsResult] = useState(null)
+  const [numClips, setNumClips] = useState(3)
+  const [clipFormat, setClipFormat] = useState('horizontal')
+
   // History state
   const [showHistory, setShowHistory] = useState(false)
   const [jobHistory, setJobHistory] = useState([])
@@ -117,6 +124,9 @@ function App() {
           } else if (isOptimizing) {
             setOptimizationProgress(data.progress)
             setOptimizationMessage(data.message)
+          } else if (isGeneratingClips) {
+            setClipsProgress(data.progress)
+            setClipsMessage(data.message)
           } else {
             // Phase 1 processing
             setProgress(data.progress)
@@ -136,6 +146,11 @@ function App() {
             setIsOptimizing(false)
             setOptimizationProgress(100)
             setOptimizationMessage('Optimization complete!')
+          } else if (data.result.short_clips) {
+            setClipsResult(data.result.short_clips)
+            setIsGeneratingClips(false)
+            setClipsProgress(100)
+            setClipsMessage('Clips générés avec succès!')
           } else {
             // Phase 1 result
             setProgress(100)
@@ -150,6 +165,7 @@ function App() {
           setIsProcessing(false)
           setIsTranscribing(false)
           setIsOptimizing(false)
+          setIsGeneratingClips(false)
           break
 
         case 'ping':
@@ -177,7 +193,7 @@ function App() {
         ws.close()
       }
     }
-  }, [jobId, isTranscribing, isOptimizing])
+  }, [jobId, isTranscribing, isOptimizing, isGeneratingClips])
 
   const handleDragOver = (e) => {
     e.preventDefault()
@@ -376,6 +392,41 @@ function App() {
       console.error('Optimization error:', err)
       setError(err.message || 'Failed to start YouTube optimization')
       setIsOptimizing(false)
+    }
+  }
+
+  const handleGenerateClips = async () => {
+    if (!jobId) {
+      setError('No job ID available')
+      return
+    }
+
+    if (!transcriptionResult) {
+      setError('Please transcribe the video first')
+      return
+    }
+
+    setIsGeneratingClips(true)
+    setClipsProgress(0)
+    setClipsMessage('Starting short clips generation...')
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/generate-clips/${jobId}?num_clips=${numClips}&clip_format=${clipFormat}`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error(`Clips generation failed: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log('Clips generation started:', data)
+
+    } catch (err) {
+      console.error('Clips generation error:', err)
+      setError(err.message || 'Failed to start clips generation')
+      setIsGeneratingClips(false)
     }
   }
 
@@ -1366,6 +1417,202 @@ function App() {
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Short Clips Generation Section */}
+            {transcriptionResult && (
+              <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '2px solid #e0e0e0' }}>
+                <h4>✂️ Clips Courts (TikTok/Reels/Shorts)</h4>
+                <p style={{ fontSize: '14px', color: '#888', marginBottom: '15px' }}>
+                  Génère automatiquement les meilleurs moments de votre vidéo pour les réseaux sociaux
+                </p>
+
+                {!clipsResult && !isGeneratingClips && (
+                  <div>
+                    {/* Configuration */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '15px',
+                      marginBottom: '20px',
+                      padding: '15px',
+                      backgroundColor: '#1a2530',
+                      borderRadius: '8px',
+                      border: '1px solid #2a3a4a'
+                    }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
+                          Nombre de clips :
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={numClips}
+                          onChange={(e) => setNumClips(parseInt(e.target.value))}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            backgroundColor: '#222',
+                            border: '1px solid #3a3a3a',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            fontSize: '14px'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
+                          Format :
+                        </label>
+                        <select
+                          value={clipFormat}
+                          onChange={(e) => setClipFormat(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            backgroundColor: '#222',
+                            border: '1px solid #3a3a3a',
+                            borderRadius: '6px',
+                            color: '#fff',
+                            fontSize: '14px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="horizontal">📺 Horizontal (16:9 - YouTube)</option>
+                          <option value="vertical">📱 Vertical (9:16 - TikTok/Reels)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <button
+                      className="process-btn"
+                      onClick={handleGenerateClips}
+                      disabled={isGeneratingClips}
+                      style={{ backgroundColor: '#10b981' }}
+                    >
+                      ✂️ Générer les Clips Courts
+                    </button>
+                  </div>
+                )}
+
+                {isGeneratingClips && (
+                  <div className="progress-container">
+                    <div className="progress-bar-container">
+                      <div className="progress-bar" style={{ width: `${clipsProgress}%` }}>
+                        {clipsProgress.toFixed(0)}%
+                      </div>
+                    </div>
+                    <div className="progress-message">{clipsMessage}</div>
+                  </div>
+                )}
+
+                {clipsResult && clipsResult.success && (
+                  <div className="results" style={{ marginTop: '15px', backgroundColor: '#1a2a1a' }}>
+                    <div className="result-item">
+                      <strong>✅ {clipsResult.num_clips} clips générés avec succès !</strong>
+                    </div>
+
+                    <div style={{ marginTop: '20px', display: 'grid', gap: '20px' }}>
+                      {clipsResult.clips.map((clip, idx) => (
+                        <div key={idx} style={{
+                          padding: '20px',
+                          backgroundColor: '#2a2a2a',
+                          borderRadius: '10px',
+                          border: '1px solid #3a3a3a'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                            <div style={{ flex: 1 }}>
+                              <h4 style={{ margin: '0 0 8px 0', color: '#10b981' }}>
+                                🎬 Clip #{idx + 1}: {clip.title}
+                              </h4>
+                              <div style={{ fontSize: '13px', color: '#888', marginBottom: '8px' }}>
+                                ⏱️ Durée: {Math.floor(clip.duration)}s |
+                                🕐 {Math.floor(clip.start_time / 60)}:{Math.floor(clip.start_time % 60).toString().padStart(2, '0')} → {Math.floor(clip.end_time / 60)}:{Math.floor(clip.end_time % 60).toString().padStart(2, '0')}
+                              </div>
+                              {clip.hook && (
+                                <div style={{
+                                  padding: '10px',
+                                  backgroundColor: '#1a1a1a',
+                                  borderRadius: '6px',
+                                  fontSize: '13px',
+                                  color: '#fbbf24',
+                                  marginTop: '8px'
+                                }}>
+                                  🎯 Hook: "{clip.hook}"
+                                </div>
+                              )}
+                              {clip.why_interesting && (
+                                <div style={{
+                                  padding: '10px',
+                                  backgroundColor: '#1a1a1a',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  color: '#888',
+                                  marginTop: '8px'
+                                }}>
+                                  💡 {clip.why_interesting}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                            <a
+                              href={`/api/download-clip/${jobId}/${idx}`}
+                              download
+                              style={{
+                                padding: '10px 20px',
+                                backgroundColor: '#10b981',
+                                color: '#fff',
+                                borderRadius: '6px',
+                                textDecoration: 'none',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                display: 'inline-block'
+                              }}
+                            >
+                              📥 Télécharger
+                            </a>
+                            {clip.url && (
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(clip.title);
+                                  alert('Titre copié ! 📋');
+                                }}
+                                style={{
+                                  padding: '10px 20px',
+                                  backgroundColor: '#0ea5e9',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '14px',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                📋 Copier le titre
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{
+                      marginTop: '20px',
+                      padding: '15px',
+                      backgroundColor: '#1a2a1a',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#4ade80',
+                      border: '1px solid #2a4a2a'
+                    }}>
+                      🎯 <strong>Astuce :</strong> Les clips sont analysés par GPT-4 pour identifier les moments les plus viraux et engageants. Format: {clipsResult.format === 'vertical' ? '9:16 (TikTok/Reels)' : '16:9 (YouTube Shorts)'}
+                    </div>
                   </div>
                 )}
               </div>

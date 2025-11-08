@@ -2,6 +2,8 @@
 CRUD operations for database models
 """
 import logging
+import os
+from pathlib import Path
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -173,7 +175,7 @@ class JobRepository:
     @staticmethod
     def delete_job(db: Session, job_id: str) -> bool:
         """
-        Delete a job
+        Delete a job and all associated files
 
         Args:
             db: Database session
@@ -185,9 +187,48 @@ class JobRepository:
         job = JobRepository.get_job(db, job_id)
 
         if job:
+            # Delete all associated files before deleting the database record
+            files_to_delete = []
+
+            # Add video file if exists
+            if job.video_path:
+                video_path = Path(job.video_path)
+                files_to_delete.append(job.video_path)
+
+                # Add temporary audio files that may have been created
+                # Pattern: {video_stem}_audio.wav
+                audio_file = video_path.parent / f"{video_path.stem}_audio.wav"
+                if audio_file.exists():
+                    files_to_delete.append(str(audio_file))
+
+                # Pattern: {video_stem}_enhanced.wav (if audio enhancement was used)
+                enhanced_audio_file = video_path.parent / f"{video_path.stem}_enhanced.wav"
+                if enhanced_audio_file.exists():
+                    files_to_delete.append(str(enhanced_audio_file))
+
+            # Add Premiere Pro export if exists
+            if job.premiere_pro_export:
+                files_to_delete.append(job.premiere_pro_export)
+
+            # Add Final Cut Pro export if exists
+            if job.final_cut_pro_export:
+                files_to_delete.append(job.final_cut_pro_export)
+
+            # Delete each file
+            for file_path in files_to_delete:
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        logger.info(f"Deleted file: {file_path}")
+                    else:
+                        logger.warning(f"File not found: {file_path}")
+                except Exception as e:
+                    logger.error(f"Error deleting file {file_path}: {e}")
+
+            # Delete the database record
             db.delete(job)
             db.commit()
-            logger.info(f"Deleted job {job_id}")
+            logger.info(f"Deleted job {job_id} and all associated files")
             return True
 
         return False

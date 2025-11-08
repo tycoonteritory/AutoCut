@@ -202,7 +202,7 @@ echo -e "${YELLOW}      → Vérification du backend...${NC}"
 BACKEND_READY=false
 for i in {1..15}; do
     sleep 1
-    if curl -s http://localhost:8765/api/ > /dev/null 2>&1; then
+    if curl -s http://localhost:8765/health > /dev/null 2>&1; then
         BACKEND_READY=true
         break
     fi

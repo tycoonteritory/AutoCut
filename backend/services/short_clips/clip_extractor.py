@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
 import asyncio
+from .subtitle_renderer import AnimatedSubtitleRenderer
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ class ClipExtractor:
     """Extracts short clips from video files"""
 
     def __init__(self):
-        pass
+        self.subtitle_renderer = AnimatedSubtitleRenderer()
 
     async def extract_clips(
         self,
@@ -22,7 +23,11 @@ class ClipExtractor:
         clips: List[Dict[str, Any]],
         output_dir: Path,
         format: str = "horizontal",  # "horizontal" or "vertical"
-        progress_callback: Optional[Callable[[float, str], None]] = None
+        progress_callback: Optional[Callable[[float, str], None]] = None,
+        add_subtitles: bool = False,  # Ajouter des sous-titres animés
+        transcription_segments: Optional[List[Dict[str, Any]]] = None,  # Segments de transcription
+        subtitle_style: str = "default",  # Style de sous-titres
+        subtitle_position: str = "bottom"  # Position des sous-titres
     ) -> List[Dict[str, Any]]:
         """
         Extract multiple clips from a video
@@ -33,6 +38,10 @@ class ClipExtractor:
             output_dir: Output directory for clips
             format: "horizontal" (16:9) or "vertical" (9:16)
             progress_callback: Callback for progress updates
+            add_subtitles: Ajouter des sous-titres animés aux clips
+            transcription_segments: Segments de transcription avec timestamps
+            subtitle_style: Style de sous-titres ("default", "tiktok", "instagram", "youtube")
+            subtitle_position: Position des sous-titres ("top", "center", "bottom")
 
         Returns:
             List of extracted clips with file paths
@@ -56,16 +65,48 @@ class ClipExtractor:
                 output_filename = f"clip_{idx + 1}_{safe_title}.mp4"
                 output_path = output_dir / output_filename
 
+                # Utiliser un fichier temporaire si des sous-titres doivent être ajoutés
+                temp_output_path = output_path
+                if add_subtitles and transcription_segments:
+                    temp_output_path = output_dir / f"temp_{output_filename}"
+
                 # Extract clip
                 success = await self._extract_single_clip(
                     video_path,
-                    output_path,
+                    temp_output_path,
                     clip["start_time"],
                     clip["end_time"],
                     format
                 )
 
                 if success:
+                    # Ajouter les sous-titres si demandé
+                    if add_subtitles and transcription_segments:
+                        if progress_callback:
+                            await progress_callback(
+                                (idx / total_clips) * 100,
+                                f"Ajout des sous-titres au clip {idx + 1}/{total_clips}..."
+                            )
+
+                        subtitle_success = await self.subtitle_renderer.add_subtitles_to_video(
+                            video_path=temp_output_path,
+                            output_path=output_path,
+                            segments=transcription_segments,
+                            start_offset=clip["start_time"],
+                            duration=clip["end_time"] - clip["start_time"],
+                            style_name=subtitle_style,
+                            position=subtitle_position
+                        )
+
+                        # Supprimer le fichier temporaire
+                        if temp_output_path.exists() and temp_output_path != output_path:
+                            temp_output_path.unlink()
+
+                        if not subtitle_success:
+                            logger.warning(f"Échec de l'ajout des sous-titres au clip {idx + 1}")
+                            # Continuer quand même avec la vidéo sans sous-titres
+                            if not output_path.exists() and temp_output_path.exists():
+                                temp_output_path.rename(output_path)
                     # Add file info to clip
                     extracted_clip = {
                         **clip,

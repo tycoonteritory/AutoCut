@@ -299,7 +299,10 @@ async def generate_short_clips(
     job_id: str,
     num_clips: int = Query(3, ge=1, le=10),
     clip_format: str = Query("horizontal", regex="^(horizontal|vertical)$"),
-    use_ai: bool = Query(False, description="Use GPT-4 for detection (requires transcription) or local scoring")
+    use_ai: bool = Query(False, description="Use GPT-4 for detection (requires transcription) or local scoring"),
+    add_subtitles: bool = Query(False, description="Ajouter des sous-titres animés aux clips (nécessite la transcription)"),
+    subtitle_style: str = Query("default", regex="^(default|tiktok|instagram|youtube)$", description="Style de sous-titres"),
+    subtitle_position: str = Query("bottom", regex="^(top|center|bottom)$", description="Position des sous-titres")
 ):
     """
     Generate short clips (TikTok/Reels/Shorts) from a video
@@ -309,6 +312,9 @@ async def generate_short_clips(
         num_clips: Number of clips to generate (1-10, default: 3)
         clip_format: "horizontal" (16:9) or "vertical" (9:16)
         use_ai: Use GPT-4 AI detection (True) or local scoring (False, default)
+        add_subtitles: Ajouter des sous-titres animés (nécessite transcription Whisper)
+        subtitle_style: Style de sous-titres (default, tiktok, instagram, youtube)
+        subtitle_position: Position des sous-titres (top, center, bottom)
 
     Returns:
         Status message
@@ -326,22 +332,41 @@ async def generate_short_clips(
     if use_ai and 'transcription_result' not in job:
         raise HTTPException(status_code=400, detail="AI mode requires video transcription first")
 
+    # If adding subtitles, require transcription
+    if add_subtitles and 'transcription_result' not in job:
+        raise HTTPException(status_code=400, detail="Subtitles require video transcription first (Whisper)")
+
     # Start clip generation in background
-    asyncio.create_task(generate_clips_task(job_id, num_clips, clip_format, use_ai))
+    asyncio.create_task(generate_clips_task(
+        job_id, num_clips, clip_format, use_ai,
+        add_subtitles, subtitle_style, subtitle_position
+    ))
 
     detection_method = "GPT-4 AI" if use_ai else "Local scoring (100% gratuit)"
+
+    subtitle_info = f" avec sous-titres animés ({subtitle_style})" if add_subtitles else ""
 
     return {
         "job_id": job_id,
         "status": "generating_clips",
-        "message": f"Generating {num_clips} short clips using {detection_method}...",
+        "message": f"Generating {num_clips} short clips using {detection_method}{subtitle_info}...",
         "num_clips": num_clips,
         "format": clip_format,
-        "detection_method": detection_method
+        "detection_method": detection_method,
+        "subtitles_enabled": add_subtitles,
+        "subtitle_style": subtitle_style if add_subtitles else None
     }
 
 
-async def generate_clips_task(job_id: str, num_clips: int, clip_format: str, use_ai: bool = False):
+async def generate_clips_task(
+    job_id: str,
+    num_clips: int,
+    clip_format: str,
+    use_ai: bool = False,
+    add_subtitles: bool = False,
+    subtitle_style: str = "default",
+    subtitle_position: str = "bottom"
+):
     """Background task to generate short clips"""
     try:
         job = active_jobs[job_id]
@@ -417,13 +442,22 @@ async def generate_clips_task(job_id: str, num_clips: int, clip_format: str, use
         clean_name = "".join(c for c in clean_name if c.isalnum() or c in (' ', '-', '_')).strip()
         output_dir = settings.OUTPUT_DIR / clean_name / "short_clips"
 
+        # Préparer les segments de transcription pour les sous-titres
+        transcription_segments = None
+        if add_subtitles and 'transcription_result' in job:
+            transcription_segments = job['transcription_result']['segments']
+
         extractor = ClipExtractor()
         extracted_clips = await extractor.extract_clips(
             video_path=video_path,
             clips=clip_suggestions,
             output_dir=output_dir,
             format=clip_format,
-            progress_callback=progress_callback
+            progress_callback=progress_callback,
+            add_subtitles=add_subtitles,
+            transcription_segments=transcription_segments,
+            subtitle_style=subtitle_style,
+            subtitle_position=subtitle_position
         )
 
         # Convert file paths to URLs

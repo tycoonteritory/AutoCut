@@ -603,22 +603,36 @@ function App() {
                     <div style={{
                       marginTop: '15px',
                       display: 'flex',
-                      gap: '10px'
+                      gap: '10px',
+                      flexWrap: 'wrap'
                     }}>
                       <button
                         onClick={() => loadJobDetails(histJob)}
                         style={{
-                          padding: '8px 16px',
-                          backgroundColor: '#10b981',
+                          padding: '10px 20px',
+                          backgroundColor: '#a78bfa',
                           color: '#fff',
-                          border: 'none',
-                          borderRadius: '6px',
+                          border: '2px solid #c4b5fd',
+                          borderRadius: '8px',
                           cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 'bold'
+                          fontSize: '14px',
+                          fontWeight: 'bold',
+                          boxShadow: '0 4px 6px rgba(167, 139, 250, 0.3)',
+                          transition: 'all 0.2s'
                         }}
+                        onMouseOver={(e) => {
+                          e.target.style.backgroundColor = '#c4b5fd'
+                          e.target.style.transform = 'translateY(-2px)'
+                          e.target.style.boxShadow = '0 6px 8px rgba(167, 139, 250, 0.4)'
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.backgroundColor = '#a78bfa'
+                          e.target.style.transform = 'translateY(0)'
+                          e.target.style.boxShadow = '0 4px 6px rgba(167, 139, 250, 0.3)'
+                        }}
+                        title="Accédez à toutes les options : Transcription, Optimisation YouTube, Génération de clips courts, et plus encore !"
                       >
-                        📋 Détails
+                        🎬 Post-traitement Complet
                       </button>
                       {histJob.premiere_pro_export && (
                         <a

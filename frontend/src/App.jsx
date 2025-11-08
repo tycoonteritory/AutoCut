@@ -1675,6 +1675,8 @@ function App() {
           <strong>❌ Error:</strong> {error}
         </div>
       )}
+      </>
+      )}
     </div>
   )
 }

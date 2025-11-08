@@ -97,12 +97,18 @@ class LocalClipScorer:
             # Format for output
             results = []
             for idx, clip in enumerate(top_clips):
+                # Generate enhanced metadata
+                title = self._generate_title(clip, idx)
+                hook = self._generate_hook(clip, idx)
+                hashtags = self._generate_hashtags(clip, idx)
+
                 results.append({
                     'start_time': clip['start_time'],
                     'end_time': clip['end_time'],
                     'duration': clip['duration'],
-                    'title': self._generate_title(clip),
-                    'hook': self._generate_hook(clip),
+                    'title': title,
+                    'hook': hook,
+                    'hashtags': hashtags,
                     'why_interesting': self._explain_score(clip),
                     'clip_text': clip['text'][:500],
                     'score': clip['score']['total'],
@@ -252,41 +258,157 @@ class LocalClipScorer:
             'matched_keywords': matched_keywords[:5]  # Top 5
         }
 
-    def _generate_title(self, clip: Dict) -> str:
-        """Generate catchy title from highest scoring keywords"""
+    def _generate_title(self, clip: Dict, clip_index: int) -> str:
+        """Generate catchy YouTube-optimized title"""
         text = clip['text']
         score_info = clip['score']
+        duration = clip['duration']
 
-        # Try to extract a catchy phrase
+        # Check if this is a dummy segment (no real transcription)
+        is_dummy = text.startswith("Segment ")
+
+        if is_dummy:
+            # Generate smart titles based on timing and score
+            templates = [
+                f"Meilleur Moment #{clip_index + 1} de la Vidéo",
+                f"Extrait Viral #{clip_index + 1} ({int(duration)}s)",
+                f"Clip Incontournable #{clip_index + 1}",
+                f"Top Moment #{clip_index + 1}",
+                f"Le Passage à Ne Pas Manquer #{clip_index + 1}",
+            ]
+            return templates[clip_index % len(templates)]
+
+        # With real transcription, extract catchy phrase
         sentences = re.split(r'[.!?]+', text)
 
         # Prefer short, punchy sentences
         for sentence in sentences:
             sentence = sentence.strip()
             if 5 <= len(sentence.split()) <= 12:
-                # Capitalize first letter
-                return sentence[0].upper() + sentence[1:50]
+                # Capitalize and add appeal
+                title = sentence[0].upper() + sentence[1:47]
+                return f"{title}..."
+
+        # Look for energy keywords
+        matched_keywords = score_info.get('matched_keywords', [])
+        if matched_keywords:
+            # Use highest scoring keyword context
+            keyword = matched_keywords[0]
+            # Find context around keyword
+            parts = text.lower().split(keyword)
+            if len(parts) > 1:
+                context = (parts[0][-20:] + keyword + parts[1][:20]).strip()
+                if len(context) > 10:
+                    return context[0].upper() + context[1:50] + "..."
 
         # Fallback: use first sentence
         if sentences and sentences[0]:
             title = sentences[0].strip()[:50]
-            return title[0].upper() + title[1:] if title else "Moment intéressant"
+            return title[0].upper() + title[1:] if title else f"Moment Viral #{clip_index + 1}"
 
-        return "Moment drôle"
+        return f"Clip Intéressant #{clip_index + 1}"
 
-    def _generate_hook(self, clip: Dict) -> str:
+    def _generate_hook(self, clip: Dict, clip_index: int) -> str:
         """Generate hook phrase for first 3 seconds"""
         text = clip['text']
+        start_time = clip['start_time']
 
+        # Check if this is a dummy segment
+        is_dummy = text.startswith("Segment ")
+
+        if is_dummy:
+            # Generate engaging hooks based on position
+            minutes = int(start_time // 60)
+            hooks = [
+                f"Découvrez ce moment incroyable à {minutes}:{int(start_time % 60):02d} !",
+                f"Ce qui se passe ici est fou...",
+                f"Regardez bien ce passage !",
+                f"Vous n'allez pas croire ce moment...",
+                f"Attention à ce qui arrive !",
+            ]
+            return hooks[clip_index % len(hooks)]
+
+        # With real transcription
         # First sentence as hook
         first_sentence = re.split(r'[.!?]+', text)[0].strip()
 
+        # If it's a question, use it as hook
+        if '?' in first_sentence:
+            return first_sentence[:60]
+
+        # If short enough, use whole first sentence
         if len(first_sentence.split()) <= 10:
             return first_sentence
+
+        # Look for exciting words at the start
+        for keyword in ['mdr', 'regarde', 'écoute', 'imagine', 'attend']:
+            if text.lower().startswith(keyword):
+                words = text.split()[:10]
+                return ' '.join(words) + '...'
 
         # Take first 8 words
         words = text.split()[:8]
         return ' '.join(words) + '...'
+
+    def _generate_hashtags(self, clip: Dict, clip_index: int) -> List[str]:
+        """Generate YouTube hashtags for the clip"""
+        text = clip['text'].lower()
+        score_info = clip['score']
+        hashtags = []
+
+        # Always include base hashtags
+        base_tags = ['#Shorts', '#Viral', '#Trending']
+        hashtags.extend(base_tags)
+
+        # Check if dummy segment
+        is_dummy = text.startswith("segment ")
+
+        if not is_dummy:
+            # Extract keywords from text
+            matched_keywords = score_info.get('matched_keywords', [])
+
+            # Map keywords to hashtags
+            keyword_to_hashtag = {
+                'mdr': '#Drôle',
+                'lol': '#Humour',
+                'rire': '#Rire',
+                'fou': '#Incroyable',
+                'dingue': '#Fou',
+                'ouf': '#Ouf',
+                'incroyable': '#Amazing',
+                'histoire': '#Story',
+                'chaud': '#Epic',
+                'stylé': '#Cool',
+                'grave': '#Grave',
+            }
+
+            for keyword in matched_keywords:
+                if keyword in keyword_to_hashtag:
+                    tag = keyword_to_hashtag[keyword]
+                    if tag not in hashtags:
+                        hashtags.append(tag)
+
+        # Add generic engaging tags
+        generic_tags = [
+            '#Clip',
+            '#MomentFort',
+            '#AVoir',
+            '#Découverte',
+            '#Contenu',
+            '#Vidéo',
+            '#BestOf',
+            '#Extrait',
+            '#TopMoment',
+        ]
+
+        # Add 3-4 generic tags if we don't have enough
+        for tag in generic_tags:
+            if len(hashtags) >= 10:  # Limit to 10 hashtags
+                break
+            if tag not in hashtags:
+                hashtags.append(tag)
+
+        return hashtags[:10]  # YouTube recommends max 10-15 hashtags
 
     def _explain_score(self, clip: Dict) -> str:
         """Explain why this clip scored well"""
@@ -294,21 +416,24 @@ class LocalClipScorer:
         reasons = []
 
         if breakdown.get('energy', 0) > 20:
-            reasons.append("Haute énergie et mots percutants")
+            reasons.append("⚡ Haute énergie et mots percutants")
 
         if breakdown.get('qa_pattern', 0) > 0:
-            reasons.append("Format question-réponse engageant")
+            reasons.append("❓ Format question-réponse engageant")
 
         if breakdown.get('punctuation', 0) > 10:
-            reasons.append("Emphase et exclamations")
+            reasons.append("❗ Emphase et exclamations")
 
         if breakdown.get('density', 0) > 10:
-            reasons.append("Rythme rapide et dynamique")
+            reasons.append("🏃 Rythme rapide et dynamique")
 
         if breakdown.get('repetition', 0) > 0:
-            reasons.append("Phrases marquantes répétées")
+            reasons.append("🔁 Phrases marquantes répétées")
+
+        if breakdown.get('caps', 0) > 5:
+            reasons.append("📢 Emphase vocale forte")
 
         if not reasons:
-            reasons.append("Moment engageant")
+            reasons.append("✨ Moment engageant sélectionné")
 
         return " • ".join(reasons)

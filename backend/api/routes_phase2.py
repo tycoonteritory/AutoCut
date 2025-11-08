@@ -13,6 +13,7 @@ from ..services.transcription.formatter import TranscriptionFormatter
 from ..services.youtube_optimization.youtube_optimizer import YouTubeOptimizer
 from ..services.short_clips.clip_detector import ClipDetector
 from ..services.short_clips.clip_extractor import ClipExtractor
+from ..services.short_clips.local_clip_scorer import LocalClipScorer
 from .websocket_manager import ws_manager
 from .routes import active_jobs
 
@@ -260,15 +261,17 @@ async def download_transcription(job_id: str, format: str):
 async def generate_short_clips(
     job_id: str,
     num_clips: int = Query(3, ge=1, le=10),
-    clip_format: str = Query("horizontal", regex="^(horizontal|vertical)$")
+    clip_format: str = Query("horizontal", regex="^(horizontal|vertical)$"),
+    use_ai: bool = Query(False, description="Use GPT-4 for detection (requires transcription) or local scoring")
 ):
     """
-    Generate short clips (TikTok/Reels/Shorts) from a transcribed video
+    Generate short clips (TikTok/Reels/Shorts) from a video
 
     Args:
         job_id: Job ID
         num_clips: Number of clips to generate (1-10, default: 3)
         clip_format: "horizontal" (16:9) or "vertical" (9:16)
+        use_ai: Use GPT-4 AI detection (True) or local scoring (False, default)
 
     Returns:
         Status message
@@ -278,27 +281,34 @@ async def generate_short_clips(
 
     job = active_jobs[job_id]
 
-    if 'transcription_result' not in job:
-        raise HTTPException(status_code=400, detail="Video must be transcribed first")
+    # Check if video processing is complete
+    if job.get('status') != 'completed':
+        raise HTTPException(status_code=400, detail="Video must be processed first (Phase 1)")
+
+    # If using AI, require transcription
+    if use_ai and 'transcription_result' not in job:
+        raise HTTPException(status_code=400, detail="AI mode requires video transcription first")
 
     # Start clip generation in background
-    asyncio.create_task(generate_clips_task(job_id, num_clips, clip_format))
+    asyncio.create_task(generate_clips_task(job_id, num_clips, clip_format, use_ai))
+
+    detection_method = "GPT-4 AI" if use_ai else "Local scoring (100% gratuit)"
 
     return {
         "job_id": job_id,
         "status": "generating_clips",
-        "message": f"Generating {num_clips} short clips...",
+        "message": f"Generating {num_clips} short clips using {detection_method}...",
         "num_clips": num_clips,
-        "format": clip_format
+        "format": clip_format,
+        "detection_method": detection_method
     }
 
 
-async def generate_clips_task(job_id: str, num_clips: int, clip_format: str):
+async def generate_clips_task(job_id: str, num_clips: int, clip_format: str, use_ai: bool = False):
     """Background task to generate short clips"""
     try:
         job = active_jobs[job_id]
         video_path = Path(job['video_path'])
-        transcription_result = job['transcription_result']
 
         # Update status
         job['clips_generation_status'] = 'generating'
@@ -307,16 +317,58 @@ async def generate_clips_task(job_id: str, num_clips: int, clip_format: str):
         async def progress_callback(progress: float, message: str):
             await ws_manager.send_progress(job_id, progress, message)
 
-        await progress_callback(0, "Analyse de la vidéo pour trouver les meilleurs moments...")
-
         # Step 1: Detect best moments
-        detector = ClipDetector()
-        clip_suggestions = detector.detect_best_moments(
-            transcription=transcription_result['text'],
-            segments=transcription_result['segments'],
-            num_clips=num_clips,
-            target_duration=45  # 45 seconds for Shorts/Reels
-        )
+        if use_ai and 'transcription_result' in job:
+            # Use GPT-4 AI detection
+            await progress_callback(0, "Analyse IA de la vidéo avec GPT-4...")
+            transcription_result = job['transcription_result']
+
+            detector = ClipDetector()
+            clip_suggestions = detector.detect_best_moments(
+                transcription=transcription_result['text'],
+                segments=transcription_result['segments'],
+                num_clips=num_clips,
+                target_duration=45  # 45 seconds for Shorts/Reels
+            )
+        else:
+            # Use local scoring (no AI, no cost!)
+            await progress_callback(0, "Analyse locale des meilleurs moments (vannes, énergie)...")
+
+            # Check if we have transcription from Whisper (local)
+            if 'transcription_result' in job:
+                # Use Whisper transcription segments
+                transcription_result = job['transcription_result']
+                segments = transcription_result['segments']
+            else:
+                # No transcription available - use silence detection data from Phase 1
+                # Create dummy segments based on kept audio regions
+                logger.warning("No transcription available, using Phase 1 silence data")
+                result = job.get('result', {})
+
+                # Get video duration
+                if 'duration_seconds' not in result:
+                    raise Exception("Cannot generate clips without transcription or duration data")
+
+                # Create segments from kept regions (speech segments)
+                # This is a simplified approach - we split the video into equal parts
+                duration = result['duration_seconds']
+                segment_length = 10  # 10 second segments
+                segments = []
+
+                for i in range(0, int(duration), segment_length):
+                    segments.append({
+                        'start': i,
+                        'end': min(i + segment_length, duration),
+                        'text': f"Segment {i//segment_length + 1}"  # Dummy text
+                    })
+
+            # Use local scorer
+            scorer = LocalClipScorer()
+            clip_suggestions = scorer.score_segments(
+                segments=segments,
+                num_clips=num_clips,
+                target_duration=45
+            )
 
         if not clip_suggestions:
             raise Exception("No suitable clips detected")

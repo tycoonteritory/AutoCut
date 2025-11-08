@@ -91,6 +91,7 @@ function App() {
   const [clipsResult, setClipsResult] = useState(null)
   const [numClips, setNumClips] = useState(3)
   const [clipFormat, setClipFormat] = useState('horizontal')
+  const [useAI, setUseAI] = useState(false)
 
   // History state
   const [showHistory, setShowHistory] = useState(false)
@@ -401,8 +402,9 @@ function App() {
       return
     }
 
-    if (!transcriptionResult) {
-      setError('Please transcribe the video first')
+    // Only require transcription if using AI mode
+    if (useAI && !transcriptionResult) {
+      setError('AI mode requires transcription. Please transcribe the video first or use Local mode.')
       return
     }
 
@@ -412,7 +414,7 @@ function App() {
     setError(null)
 
     try {
-      const response = await fetch(`/api/generate-clips/${jobId}?num_clips=${numClips}&clip_format=${clipFormat}`, {
+      const response = await fetch(`/api/generate-clips/${jobId}?num_clips=${numClips}&clip_format=${clipFormat}&use_ai=${useAI}`, {
         method: 'POST'
       })
 
@@ -1421,72 +1423,112 @@ function App() {
                 )}
               </div>
             )}
+          </div>
 
-            {/* Short Clips Generation Section */}
-            {transcriptionResult && (
-              <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '2px solid #e0e0e0' }}>
-                <h4>✂️ Clips Courts (TikTok/Reels/Shorts)</h4>
-                <p style={{ fontSize: '14px', color: '#888', marginBottom: '15px' }}>
-                  Génère automatiquement les meilleurs moments de votre vidéo pour les réseaux sociaux
-                </p>
+          {/* Short Clips Generation Section - Available immediately after Phase 1 */}
+          {result && result.success && (
+            <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '2px solid #e0e0e0' }}>
+              <h4>✂️ Clips Courts (TikTok/Reels/Shorts)</h4>
+              <p style={{ fontSize: '14px', color: '#888', marginBottom: '15px' }}>
+                Génère automatiquement les meilleurs moments de votre vidéo pour les réseaux sociaux
+              </p>
 
-                {!clipsResult && !isGeneratingClips && (
-                  <div>
-                    {/* Configuration */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '15px',
-                      marginBottom: '20px',
-                      padding: '15px',
-                      backgroundColor: '#1a2530',
-                      borderRadius: '8px',
-                      border: '1px solid #2a3a4a'
-                    }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
-                          Nombre de clips :
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={numClips}
-                          onChange={(e) => setNumClips(parseInt(e.target.value))}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            backgroundColor: '#222',
-                            border: '1px solid #3a3a3a',
-                            borderRadius: '6px',
-                            color: '#fff',
-                            fontSize: '14px'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
-                          Format :
-                        </label>
-                        <select
-                          value={clipFormat}
-                          onChange={(e) => setClipFormat(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '10px',
-                            backgroundColor: '#222',
-                            border: '1px solid #3a3a3a',
-                            borderRadius: '6px',
-                            color: '#fff',
-                            fontSize: '14px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <option value="horizontal">📺 Horizontal (16:9 - YouTube)</option>
-                          <option value="vertical">📱 Vertical (9:16 - TikTok/Reels)</option>
-                        </select>
-                      </div>
+              {!clipsResult && !isGeneratingClips && (
+                <div>
+                  {/* Configuration */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gap: '15px',
+                    marginBottom: '20px',
+                    padding: '15px',
+                    backgroundColor: '#1a2530',
+                    borderRadius: '8px',
+                    border: '1px solid #2a3a4a'
+                  }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
+                        Nombre de clips :
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={numClips}
+                        onChange={(e) => setNumClips(parseInt(e.target.value))}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          backgroundColor: '#222',
+                          border: '1px solid #3a3a3a',
+                          borderRadius: '6px',
+                          color: '#fff',
+                          fontSize: '14px'
+                        }}
+                      />
                     </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
+                        Format :
+                      </label>
+                      <select
+                        value={clipFormat}
+                        onChange={(e) => setClipFormat(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          backgroundColor: '#222',
+                          border: '1px solid #3a3a3a',
+                          borderRadius: '6px',
+                          color: '#fff',
+                          fontSize: '14px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="horizontal">📺 Horizontal (16:9 - YouTube)</option>
+                        <option value="vertical">📱 Vertical (9:16 - TikTok/Reels)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
+                        Méthode de détection :
+                      </label>
+                      <select
+                        value={useAI ? 'ai' : 'local'}
+                        onChange={(e) => setUseAI(e.target.value === 'ai')}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          backgroundColor: '#222',
+                          border: '1px solid #3a3a3a',
+                          borderRadius: '6px',
+                          color: '#fff',
+                          fontSize: '14px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="local">💰 Local (GRATUIT - Vannes/Énergie)</option>
+                        <option value="ai">🤖 GPT-4 AI (Nécessite transcription)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Info message based on mode */}
+                  <div style={{
+                    marginBottom: '15px',
+                    padding: '12px',
+                    backgroundColor: useAI ? '#1a1a2a' : '#1a2a1a',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: useAI ? '#a78bfa' : '#4ade80',
+                    border: useAI ? '1px solid #2a2a4a' : '1px solid #2a4a2a'
+                  }}>
+                    {useAI ? (
+                      <>🤖 <strong>Mode IA :</strong> Utilise GPT-4 pour analyser le contenu et trouver les moments les plus viraux. Nécessite une transcription préalable.</>
+                    ) : (
+                      <>💰 <strong>Mode Local (GRATUIT) :</strong> Analyse intelligente locale qui détecte les vannes, moments drôles et segments à haute énergie. Aucun coût API !</>
+                    )}
+                  </div>
 
                     <button
                       className="process-btn"

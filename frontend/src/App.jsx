@@ -331,6 +331,51 @@ function App() {
     }
   }
 
+  const loadJobDetails = async (histJob) => {
+    try {
+      // Fetch complete job data from API
+      const response = await fetch(`/api/job/${histJob.id}`)
+      if (!response.ok) {
+        throw new Error('Failed to load job details')
+      }
+
+      const jobData = await response.json()
+
+      // Set the job ID
+      setJobId(histJob.id)
+
+      // Set the file info
+      setFile({ name: histJob.filename })
+
+      // Restore main processing result
+      if (jobData.result) {
+        setResult(jobData.result)
+
+        // Restore transcription result if available
+        if (jobData.result.transcription) {
+          setTranscriptionResult(jobData.result.transcription)
+        }
+
+        // Restore YouTube optimization result if available
+        if (jobData.result.youtube_optimization) {
+          setOptimizationResult(jobData.result.youtube_optimization)
+        }
+
+        // Restore clips result if available
+        if (jobData.result.short_clips) {
+          setClipsResult(jobData.result.short_clips)
+        }
+      }
+
+      // Switch to main view to show the complete post-processing page
+      setShowHistory(false)
+
+    } catch (err) {
+      console.error('Error loading job details:', err)
+      setError('Failed to load job details')
+    }
+  }
+
   const handleTranscribe = async () => {
     if (!jobId) {
       setError('No job ID available')
@@ -557,6 +602,21 @@ function App() {
                       display: 'flex',
                       gap: '10px'
                     }}>
+                      <button
+                        onClick={() => loadJobDetails(histJob)}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: '#10b981',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        📋 Détails
+                      </button>
                       {histJob.premiere_pro_export && (
                         <a
                           href={`/api/download/${histJob.id}/premiere_pro`}

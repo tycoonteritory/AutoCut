@@ -16,10 +16,41 @@ from ..services.short_clips.clip_extractor import ClipExtractor
 from ..services.short_clips.local_clip_scorer import LocalClipScorer
 from .websocket_manager import ws_manager
 from .routes import active_jobs
+from ..database import SessionLocal, JobRepository
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def update_job_phase2_result(job_id: str, phase_key: str, phase_result: dict):
+    """
+    Update job result in database with Phase 2 data (transcription, youtube_optimization, clips)
+
+    Args:
+        job_id: Job ID
+        phase_key: Key for the phase result (e.g., 'transcription', 'youtube_optimization', 'clips')
+        phase_result: Result data to store
+    """
+    db = SessionLocal()
+    try:
+        job = JobRepository.get_job(db, job_id)
+        if job and job.result:
+            # Get existing result and update with new phase data
+            result = job.result.copy() if isinstance(job.result, dict) else {}
+            result[phase_key] = phase_result
+
+            # Update job result in database
+            job.result = result
+            job.updated_at = __import__('datetime').datetime.utcnow()
+            db.commit()
+            db.refresh(job)
+            logger.info(f"Updated job {job_id} with {phase_key} result in database")
+    except Exception as e:
+        logger.error(f"Error updating job {job_id} with {phase_key} result: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 
 @router.post("/transcribe/{job_id}")
@@ -113,6 +144,9 @@ async def transcribe_video_task(job_id: str):
         }
         job['transcription_status'] = 'completed'
 
+        # Save to database
+        update_job_phase2_result(job_id, 'transcription', job['transcription_result'])
+
         await progress_callback(100, "Transcription complete!")
         await ws_manager.send_result(job_id, {'transcription': job['transcription_result']})
 
@@ -183,6 +217,9 @@ async def optimize_youtube_task(job_id: str):
         # Store result
         job['youtube_optimization_result'] = result
         job['youtube_optimization_status'] = 'completed'
+
+        # Save to database
+        update_job_phase2_result(job_id, 'youtube_optimization', result)
 
         await ws_manager.send_result(job_id, {'youtube_optimization': result})
 
@@ -403,6 +440,9 @@ async def generate_clips_task(job_id: str, num_clips: int, clip_format: str, use
             "format": clip_format
         }
         job['clips_generation_status'] = 'completed'
+
+        # Save to database
+        update_job_phase2_result(job_id, 'short_clips', job['short_clips_result'])
 
         await progress_callback(100, f"{len(extracted_clips)} clips générés avec succès !")
         await ws_manager.send_result(job_id, {'short_clips': job['short_clips_result']})

@@ -4,8 +4,8 @@ YouTube title generation using GPT-4
 import logging
 import json
 from typing import List
-from backend.services.ai_services.openai_client import get_openai_client
-from backend.config import settings
+from ..ai_services.openai_client import get_openai_client
+from ...config import settings
 
 logger = logging.getLogger(__name__)
 

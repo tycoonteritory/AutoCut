@@ -8,7 +8,8 @@ from .title_generator import TitleGenerator
 from .thumbnail_extractor import ThumbnailExtractor
 from .tag_generator import TagGenerator
 from .chapter_generator import ChapterGenerator
-from backend.services.ai_services.openai_client import get_openai_client
+from ..ai_services.openai_client import get_openai_client
+from ...config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,6 @@ class YouTubeOptimizer:
                 await progress_callback(100, "Optimization complete!")
 
             # Convert thumbnail absolute paths to relative URLs
-            from backend.config import settings
             for thumb in thumbnails:
                 abs_path = Path(thumb['path'])
                 rel_path = abs_path.relative_to(settings.OUTPUT_DIR)

@@ -6,7 +6,7 @@ import whisper
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable
 import torch
-from backend.config import settings
+from ...config import settings
 
 logger = logging.getLogger(__name__)
 

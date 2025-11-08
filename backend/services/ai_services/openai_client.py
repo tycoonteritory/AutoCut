@@ -3,7 +3,7 @@ Centralized OpenAI client for all AI services
 """
 import logging
 from openai import OpenAI
-from backend.config import settings
+from ...config import settings
 
 logger = logging.getLogger(__name__)
 

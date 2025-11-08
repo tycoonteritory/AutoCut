@@ -46,7 +46,8 @@ async def upload_video(
     filler_sensitivity: float = Form(0.7),
     whisper_model: str = Form("base"),
     enable_audio_enhancement: bool = Form(False),
-    noise_reduction_strength: float = Form(0.7)
+    noise_reduction_strength: float = Form(0.7),
+    processing_mode: str = Form("local")
 ):
     """
     Upload a video file for processing
@@ -62,6 +63,7 @@ async def upload_video(
         whisper_model: Whisper model for filler detection (default: "base")
         enable_audio_enhancement: Enable audio noise reduction (default: False)
         noise_reduction_strength: Noise reduction strength 0.0-1.0 (default: 0.7)
+        processing_mode: Processing mode - 'local' or 'gpt4' (default: 'local')
 
     Returns:
         Job ID for tracking progress
@@ -97,7 +99,8 @@ async def upload_video(
             'filler_sensitivity': filler_sensitivity,
             'whisper_model': whisper_model,
             'enable_audio_enhancement': enable_audio_enhancement,
-            'noise_reduction_strength': noise_reduction_strength
+            'noise_reduction_strength': noise_reduction_strength,
+            'processing_mode': processing_mode
         }
 
         # Store job in database for persistence
@@ -134,7 +137,8 @@ async def upload_video(
                 filler_sensitivity,
                 whisper_model,
                 enable_audio_enhancement,
-                noise_reduction_strength
+                noise_reduction_strength,
+                processing_mode
             )
         )
 
@@ -161,7 +165,8 @@ async def process_video_task(
     filler_sensitivity: float = 0.7,
     whisper_model: str = "base",
     enable_audio_enhancement: bool = False,
-    noise_reduction_strength: float = 0.7
+    noise_reduction_strength: float = 0.7,
+    processing_mode: str = "local"
 ):
     """Background task to process video"""
     try:
@@ -185,7 +190,8 @@ async def process_video_task(
             filler_sensitivity=filler_sensitivity,
             whisper_model=whisper_model,
             enable_audio_enhancement=enable_audio_enhancement,
-            noise_reduction_strength=noise_reduction_strength
+            noise_reduction_strength=noise_reduction_strength,
+            processing_mode=processing_mode
         )
 
         # Progress callback

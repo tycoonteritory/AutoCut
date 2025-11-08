@@ -8,6 +8,8 @@ from typing import Callable, Optional, Dict, Any
 from ..silence_detection.detector import SilenceDetector
 from ..filler_words.detector import FillerWordsDetector
 from ..export_formats.exporter import ExportService
+from ..transcription.whisper_service import WhisperService
+from ..ai_services.gpt4_analyzer import GPT4VideoAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,8 @@ class VideoProcessor:
         filler_sensitivity: float = 0.7,
         whisper_model: str = "base",
         enable_audio_enhancement: bool = False,
-        noise_reduction_strength: float = 0.7
+        noise_reduction_strength: float = 0.7,
+        processing_mode: str = "local"
     ):
         """
         Initialize video processor
@@ -40,6 +43,7 @@ class VideoProcessor:
             whisper_model: Whisper model for filler detection (tiny, base, small)
             enable_audio_enhancement: Enable audio noise reduction before detection
             noise_reduction_strength: Noise reduction strength (0.0-1.0)
+            processing_mode: Processing mode - 'local' or 'gpt4' (default: 'local')
         """
         self.silence_detector = SilenceDetector(
             silence_thresh=silence_thresh,
@@ -51,19 +55,42 @@ class VideoProcessor:
         self.fps = fps
         self.detect_filler_words = detect_filler_words
         self.padding = padding
+        self.processing_mode = processing_mode
+        self.whisper_model = whisper_model
 
-        # Initialize filler detector if enabled
-        if detect_filler_words:
+        # Initialize GPT-4 analyzer if in gpt4 mode
+        if processing_mode == "gpt4":
+            try:
+                self.gpt4_analyzer = GPT4VideoAnalyzer()
+                self.whisper_service = WhisperService(model_name=whisper_model, language="fr")
+                logger.info("🤖 GPT-4 Enhanced Mode ENABLED")
+                logger.info("  ✓ Intelligent filler detection")
+                logger.info("  ✓ Best moments detection")
+                logger.info("  ✓ Jokes and originality detection")
+                logger.info("  ✓ Catchy titles and descriptions")
+            except Exception as e:
+                logger.error(f"Failed to initialize GPT-4 analyzer: {e}")
+                logger.warning("Falling back to local mode")
+                self.processing_mode = "local"
+                self.gpt4_analyzer = None
+                self.whisper_service = None
+        else:
+            self.gpt4_analyzer = None
+            self.whisper_service = None
+
+        # Initialize filler detector if enabled (for local mode)
+        if detect_filler_words and processing_mode == "local":
             self.filler_detector = FillerWordsDetector(
                 whisper_model=whisper_model,
                 language="fr",
                 sensitivity=filler_sensitivity,
                 min_duration_ms=100
             )
-            logger.info("Filler words detection ENABLED")
+            logger.info("Filler words detection ENABLED (Local mode)")
         else:
             self.filler_detector = None
-            logger.info("Filler words detection DISABLED")
+            if processing_mode == "local":
+                logger.info("Filler words detection DISABLED")
 
     async def process_video(
         self,
@@ -126,12 +153,111 @@ class VideoProcessor:
                 )
             )
 
-            # Step 1.5: Detect filler words if enabled
+            # Step 1.5: GPT-4 Enhanced Analysis or Local Filler Detection
             filler_result = None
+            gpt4_analysis = None
             final_cuts = analysis_result['non_silent_periods']
             all_cuts = analysis_result['silence_periods']
 
-            if self.detect_filler_words and self.filler_detector:
+            # GPT-4 Enhanced Mode
+            if self.processing_mode == "gpt4" and self.gpt4_analyzer:
+                if progress_callback:
+                    await progress_callback(65, "🤖 Generating transcription for GPT-4 analysis...")
+
+                logger.info("Starting GPT-4 enhanced analysis...")
+
+                # Generate transcription first (needed for GPT-4)
+                transcription_result = await loop.run_in_executor(
+                    None,
+                    lambda: self.whisper_service.transcribe(
+                        Path(analysis_result['audio_path']),
+                        output_dir=output_dir
+                    )
+                )
+
+                transcription_text = transcription_result.get('text', '')
+                transcription_segments = transcription_result.get('segments', [])
+
+                # Initialize GPT-4 analysis result
+                gpt4_analysis = {
+                    'transcription': transcription_text,
+                    'enhanced_features': {}
+                }
+
+                # Detect filler words with GPT-4
+                if progress_callback:
+                    await progress_callback(72, "🤖 Analyzing filler words with GPT-4...")
+
+                filler_words_gpt4 = await self.gpt4_analyzer.analyze_filler_words(
+                    transcription_text,
+                    transcription_segments
+                )
+                gpt4_analysis['enhanced_features']['filler_words'] = filler_words_gpt4
+                logger.info(f"GPT-4 detected {len(filler_words_gpt4)} filler words")
+
+                # Detect best moments
+                if progress_callback:
+                    await progress_callback(78, "🤖 Detecting best moments with GPT-4...")
+
+                best_moments = await self.gpt4_analyzer.detect_best_moments(
+                    transcription_text,
+                    transcription_segments,
+                    analysis_result['duration_seconds']
+                )
+                gpt4_analysis['enhanced_features']['best_moments'] = best_moments
+                logger.info(f"GPT-4 detected {len(best_moments)} best moments")
+
+                # Detect jokes and originality
+                if progress_callback:
+                    await progress_callback(82, "🤖 Detecting jokes and originality with GPT-4...")
+
+                jokes = await self.gpt4_analyzer.detect_jokes_and_originality(
+                    transcription_text,
+                    transcription_segments
+                )
+                gpt4_analysis['enhanced_features']['jokes'] = jokes
+                logger.info(f"GPT-4 detected {len(jokes)} jokes/original moments")
+
+                # Generate catchy titles and description
+                if progress_callback:
+                    await progress_callback(85, "🤖 Generating catchy titles and description with GPT-4...")
+
+                titles_and_desc = await self.gpt4_analyzer.generate_catchy_titles_and_description(
+                    transcription_text,
+                    analysis_result['duration_seconds'],
+                    best_moments=best_moments,
+                    jokes=jokes
+                )
+                gpt4_analysis['enhanced_features']['titles_and_description'] = titles_and_desc
+                logger.info(f"GPT-4 generated {len(titles_and_desc.get('titles', []))} title options")
+
+                # Convert GPT-4 filler words to cut periods for merging with silence
+                if filler_words_gpt4:
+                    filler_periods = []
+                    for filler in filler_words_gpt4:
+                        start_ms = int(filler.get('start_time', 0) * 1000)
+                        end_ms = int(filler.get('end_time', 0) * 1000)
+                        if start_ms < end_ms:
+                            filler_periods.append((start_ms, end_ms))
+
+                    # Merge with silence periods
+                    all_cuts = FillerWordsDetector.merge_with_silences(
+                        silence_periods=analysis_result['silence_periods'],
+                        filler_periods=filler_periods,
+                        padding=self.padding
+                    )
+
+                    # Calculate kept periods
+                    duration_ms = int(analysis_result['duration_seconds'] * 1000)
+                    final_cuts = FillerWordsDetector.get_non_cut_periods(all_cuts, duration_ms)
+
+                    logger.info(
+                        f"Merged cuts (GPT-4): {len(analysis_result['silence_periods'])} silences + "
+                        f"{len(filler_periods)} fillers = {len(all_cuts)} total cuts"
+                    )
+
+            # Local Filler Detection Mode
+            elif self.detect_filler_words and self.filler_detector:
                 if progress_callback:
                     await progress_callback(70, "Detecting verbal hesitations (euh, hum, etc.)...")
 
@@ -221,7 +347,7 @@ class VideoProcessor:
                 'settings': analysis_result['settings']
             }
 
-            # Add filler words info if detected
+            # Add filler words info if detected (local mode)
             if filler_result:
                 result['filler_words_detected'] = filler_result['total_fillers']
                 result['filler_details'] = filler_result['filler_details']
@@ -235,6 +361,16 @@ class VideoProcessor:
                 result['settings']['filler_detection'] = {
                     'enabled': False
                 }
+
+            # Add GPT-4 analysis if available
+            if gpt4_analysis:
+                result['gpt4_analysis'] = gpt4_analysis
+                result['processing_mode'] = 'gpt4'
+                # Override filler count with GPT-4 results
+                result['filler_words_detected'] = len(gpt4_analysis['enhanced_features'].get('filler_words', []))
+                logger.info("GPT-4 enhanced results included in output")
+            else:
+                result['processing_mode'] = 'local'
 
             if progress_callback:
                 await progress_callback(100, "Processing complete!")

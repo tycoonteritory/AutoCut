@@ -46,3 +46,4 @@ Thumbs.db
 .env.save
 .env.backup
 .env.*
+data/autocut.db

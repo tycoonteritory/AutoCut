@@ -93,6 +93,10 @@ function App() {
   const [numClips, setNumClips] = useState(3)
   const [clipFormat, setClipFormat] = useState('horizontal')
   const [useAI, setUseAI] = useState(false)
+  // Subtitles options
+  const [addSubtitles, setAddSubtitles] = useState(false)
+  const [subtitleStyle, setSubtitleStyle] = useState('default')
+  const [subtitlePosition, setSubtitlePosition] = useState('bottom')
 
   // History state
   const [showHistory, setShowHistory] = useState(false)
@@ -456,13 +460,27 @@ function App() {
       return
     }
 
+    // Require transcription if subtitles are enabled
+    if (addSubtitles && !transcriptionResult) {
+      setError('⚠️ Les sous-titres nécessitent une transcription. Lancez la transcription Whisper puis réessayez.')
+      return
+    }
+
     setIsGeneratingClips(true)
     setClipsProgress(0)
     setClipsMessage('Starting short clips generation...')
     setError(null)
 
     try {
-      const response = await fetch(`/api/generate-clips/${jobId}?num_clips=${numClips}&clip_format=${clipFormat}&use_ai=${useAI}`, {
+      // Build URL with all parameters
+      let url = `/api/generate-clips/${jobId}?num_clips=${numClips}&clip_format=${clipFormat}&use_ai=${useAI}`
+
+      // Add subtitle parameters if enabled
+      if (addSubtitles) {
+        url += `&add_subtitles=true&subtitle_style=${subtitleStyle}&subtitle_position=${subtitlePosition}`
+      }
+
+      const response = await fetch(url, {
         method: 'POST'
       })
 
@@ -2077,6 +2095,114 @@ function App() {
                         <option value="ai">🤖 GPT-4 AI (Nécessite transcription)</option>
                       </select>
                     </div>
+                  </div>
+
+                  {/* Subtitles configuration */}
+                  <div style={{
+                    marginBottom: '15px',
+                    padding: '15px',
+                    backgroundColor: '#1a2530',
+                    borderRadius: '8px',
+                    border: '1px solid #2a3a4a'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: addSubtitles ? '15px' : '0'
+                    }}>
+                      <input
+                        type="checkbox"
+                        id="addSubtitles"
+                        checked={addSubtitles}
+                        onChange={(e) => setAddSubtitles(e.target.checked)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer',
+                          marginRight: '10px'
+                        }}
+                      />
+                      <label htmlFor="addSubtitles" style={{
+                        fontSize: '14px',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}>
+                        💬 Ajouter des sous-titres animés (nécessite transcription Whisper)
+                      </label>
+                    </div>
+
+                    {addSubtitles && (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '15px',
+                        paddingTop: '10px',
+                        borderTop: '1px solid #2a3a4a'
+                      }}>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
+                            Style de sous-titres :
+                          </label>
+                          <select
+                            value={subtitleStyle}
+                            onChange={(e) => setSubtitleStyle(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '10px',
+                              backgroundColor: '#222',
+                              border: '1px solid #3a3a3a',
+                              borderRadius: '6px',
+                              color: '#fff',
+                              fontSize: '14px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="default">✨ Default - Universel</option>
+                            <option value="tiktok">🎵 TikTok - Gros contour</option>
+                            <option value="instagram">📸 Instagram - Reels style</option>
+                            <option value="youtube">▶️ YouTube - Shorts style</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#888' }}>
+                            Position :
+                          </label>
+                          <select
+                            value={subtitlePosition}
+                            onChange={(e) => setSubtitlePosition(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '10px',
+                              backgroundColor: '#222',
+                              border: '1px solid #3a3a3a',
+                              borderRadius: '6px',
+                              color: '#fff',
+                              fontSize: '14px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <option value="top">⬆️ Haut (TikTok style)</option>
+                            <option value="center">➡️ Centre</option>
+                            <option value="bottom">⬇️ Bas (Instagram/YouTube)</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {addSubtitles && !transcriptionResult && (
+                      <div style={{
+                        marginTop: '10px',
+                        padding: '10px',
+                        backgroundColor: '#2a1a1a',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        color: '#ff6b6b',
+                        border: '1px solid #4a2a2a'
+                      }}>
+                        ⚠️ Attention : Vous devez d'abord lancer la transcription Whisper pour utiliser les sous-titres !
+                      </div>
+                    )}
                   </div>
 
                   {/* Info message based on mode */}

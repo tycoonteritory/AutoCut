@@ -1659,7 +1659,6 @@ function App() {
                 )}
               </div>
             )}
-          </div>
 
           <button
             className="process-btn"
@@ -1675,8 +1674,6 @@ function App() {
         <div className="error">
           <strong>❌ Error:</strong> {error}
         </div>
-      )}
-      </>
       )}
     </div>
   )

@@ -8,7 +8,7 @@ from typing import Callable, Optional, Dict, Any
 from ..silence_detection.detector import SilenceDetector
 from ..filler_words.detector import FillerWordsDetector
 from ..export_formats.exporter import ExportService
-from ..transcription.whisper_service import WhisperService
+from ..transcription.whisper_service import WhisperTranscriptionService
 from ..ai_services.gpt4_analyzer import GPT4VideoAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class VideoProcessor:
         if processing_mode == "gpt4":
             try:
                 self.gpt4_analyzer = GPT4VideoAnalyzer()
-                self.whisper_service = WhisperService(model_name=whisper_model, language="fr")
+                self.whisper_service = WhisperTranscriptionService(model_name=whisper_model, language="fr")
                 logger.info("🤖 GPT-4 Enhanced Mode ENABLED")
                 logger.info("  ✓ Intelligent filler detection")
                 logger.info("  ✓ Best moments detection")

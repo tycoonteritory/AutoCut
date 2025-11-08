@@ -86,76 +86,67 @@ class SilenceDetector:
             '-ar', '44100',  # 44.1kHz sample rate
             '-ac', '2',  # Stereo
             '-y',  # Overwrite output file
-            '-progress', 'pipe:1',  # Progress to stdout
+            '-progress', 'pipe:2',  # Progress to stderr (unbuffered)
             str(output_path)
         ]
 
         process = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,  # Ignore stdout
             stderr=subprocess.PIPE,
             universal_newlines=True,
-            bufsize=1
+            bufsize=0  # Unbuffered for real-time progress
         )
 
-        # Create queues for thread-safe reading
-        stdout_queue = queue.Queue()
+        # Create queue for thread-safe reading of stderr
         stderr_queue = queue.Queue()
-
-        def read_stdout():
-            """Read stdout in a separate thread to prevent blocking"""
-            try:
-                for line in process.stdout:
-                    stdout_queue.put(line)
-            except Exception as e:
-                logger.error(f"Error reading stdout: {e}")
-            finally:
-                process.stdout.close()
+        last_progress = [0.0]  # Use list to allow mutation in nested function
 
         def read_stderr():
             """Read stderr in a separate thread to prevent buffer overflow"""
             try:
                 for line in process.stderr:
-                    stderr_queue.put(line)
+                    stderr_queue.put(('line', line))
+
+                    # Parse progress in the thread for immediate feedback
+                    line = line.strip()
+                    if line.startswith('out_time_ms='):
+                        try:
+                            time_str = line.split('=')[1].strip()
+                            time_ms = int(time_str) / 1000000  # Convert to seconds
+                            if duration > 0 and progress_callback:
+                                progress = min((time_ms / duration) * 30, 30)
+                                # Only call if progress increased significantly (avoid spam)
+                                if progress - last_progress[0] >= 0.5 or progress >= 30:
+                                    last_progress[0] = progress
+                                    progress_callback(progress)
+                        except (ValueError, IndexError):
+                            pass
             except Exception as e:
                 logger.error(f"Error reading stderr: {e}")
+                stderr_queue.put(('error', str(e)))
             finally:
+                stderr_queue.put(('done', None))
                 process.stderr.close()
 
-        # Start threads to read stdout and stderr
-        stdout_thread = threading.Thread(target=read_stdout, daemon=True)
-        stderr_thread = threading.Thread(target=read_stderr, daemon=True)
-        stdout_thread.start()
+        # Start thread to read stderr (non-daemon to ensure all output is read)
+        stderr_thread = threading.Thread(target=read_stderr, daemon=False)
         stderr_thread.start()
-
-        # Monitor progress from stdout queue
-        while process.poll() is None or not stdout_queue.empty():
-            try:
-                line = stdout_queue.get(timeout=0.1)
-                if line.startswith('out_time_ms='):
-                    try:
-                        time_ms = int(line.split('=')[1]) / 1000000  # Convert to seconds
-                        if duration > 0 and progress_callback:
-                            progress = min((time_ms / duration) * 30, 30)  # 0-30% for audio extraction
-                            progress_callback(progress)
-                    except (ValueError, IndexError):
-                        pass
-            except queue.Empty:
-                continue
 
         # Wait for process to complete
         process.wait()
 
-        # Wait for threads to finish
-        stdout_thread.join(timeout=1)
-        stderr_thread.join(timeout=1)
+        # Wait for stderr thread to finish reading all output
+        stderr_thread.join(timeout=5)
 
         if process.returncode != 0:
-            # Collect all stderr messages
+            # Collect all stderr messages for error reporting
             stderr_lines = []
             while not stderr_queue.empty():
                 try:
-                    stderr_lines.append(stderr_queue.get_nowait())
+                    msg_type, msg_content = stderr_queue.get_nowait()
+                    if msg_type == 'line':
+                        stderr_lines.append(msg_content)
                 except queue.Empty:
                     break
             error = ''.join(stderr_lines)

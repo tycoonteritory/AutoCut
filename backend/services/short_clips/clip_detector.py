@@ -4,7 +4,7 @@ Clip detection service - identifies interesting moments for short clips
 import logging
 import json
 from typing import List, Dict, Any
-from backend.services.ai_services.openai_client import get_openai_client
+from ..ai_services.openai_client import get_openai_client
 
 logger = logging.getLogger(__name__)
 

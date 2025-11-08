@@ -7,7 +7,7 @@ import numpy as np
 from pathlib import Path
 from typing import List, Dict, Tuple
 from PIL import Image
-from backend.config import settings
+from ...config import settings
 
 logger = logging.getLogger(__name__)
 

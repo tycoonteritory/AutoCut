@@ -4,7 +4,7 @@ YouTube chapters generation using GPT-4
 import logging
 import json
 from typing import List, Dict
-from backend.services.ai_services.openai_client import get_openai_client
+from ..ai_services.openai_client import get_openai_client
 
 logger = logging.getLogger(__name__)
 

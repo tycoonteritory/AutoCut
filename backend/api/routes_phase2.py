@@ -135,19 +135,24 @@ async def transcribe_video_task(job_id: str):
         # Save TXT
         txt_path = formatter.to_txt(transcription_result['text'], output_dir / f"{Path(video_path).stem}_transcription.txt")
 
-        # Store result
+        # Store result with download URLs
         job['transcription_result'] = {
             **transcription_result,
             'srt_path': str(srt_path),
             'vtt_path': str(vtt_path),
-            'txt_path': str(txt_path)
+            'txt_path': str(txt_path),
+            'download_urls': {
+                'srt': f"/download-transcription/{job_id}/srt",
+                'vtt': f"/download-transcription/{job_id}/vtt",
+                'txt': f"/download-transcription/{job_id}/txt"
+            }
         }
         job['transcription_status'] = 'completed'
 
         # Save to database
         update_job_phase2_result(job_id, 'transcription', job['transcription_result'])
 
-        await progress_callback(100, "Transcription complete!")
+        await progress_callback(100, "✅ Transcription Whisper terminée ! Fichiers disponibles au téléchargement.")
         await ws_manager.send_result(job_id, {'transcription': job['transcription_result']})
 
     except Exception as e:
@@ -232,7 +237,7 @@ async def optimize_youtube_task(job_id: str):
 
 @router.get("/transcription/{job_id}")
 async def get_transcription(job_id: str):
-    """Get transcription result for a job"""
+    """Get transcription result for a job with download links"""
     if job_id not in active_jobs:
         raise HTTPException(status_code=404, detail="Job not found")
 
@@ -241,9 +246,20 @@ async def get_transcription(job_id: str):
     if 'transcription_result' not in job:
         raise HTTPException(status_code=404, detail="Transcription not available")
 
+    transcription = job['transcription_result']
+
+    # Ensure download URLs are present (backward compatibility)
+    if 'download_urls' not in transcription:
+        transcription['download_urls'] = {
+            'srt': f"/download-transcription/{job_id}/srt",
+            'vtt': f"/download-transcription/{job_id}/vtt",
+            'txt': f"/download-transcription/{job_id}/txt"
+        }
+
     return {
         "job_id": job_id,
-        "transcription": job['transcription_result']
+        "transcription": transcription,
+        "message": "✅ Transcription Whisper (OpenAI) - Fichiers prêts au téléchargement"
     }
 
 
@@ -342,19 +358,24 @@ async def generate_short_clips(
         add_subtitles, subtitle_style, subtitle_position
     ))
 
-    detection_method = "GPT-4 AI" if use_ai else "Local scoring (100% gratuit)"
+    detection_method = "GPT-4 AI (analyse du texte transcrit)" if use_ai else "Local scoring (100% gratuit)"
 
     subtitle_info = f" avec sous-titres animés ({subtitle_style})" if add_subtitles else ""
+
+    transcription_info = ""
+    if use_ai or add_subtitles:
+        transcription_info = " | ✅ Réutilise la transcription Whisper déjà faite"
 
     return {
         "job_id": job_id,
         "status": "generating_clips",
-        "message": f"Generating {num_clips} short clips using {detection_method}{subtitle_info}...",
+        "message": f"Génération de {num_clips} clips courts via {detection_method}{subtitle_info}{transcription_info}",
         "num_clips": num_clips,
         "format": clip_format,
         "detection_method": detection_method,
         "subtitles_enabled": add_subtitles,
-        "subtitle_style": subtitle_style if add_subtitles else None
+        "subtitle_style": subtitle_style if add_subtitles else None,
+        "reuses_transcription": use_ai or (add_subtitles and 'transcription_result' in job)
     }
 
 
@@ -382,7 +403,8 @@ async def generate_clips_task(
         # Step 1: Detect best moments
         if use_ai and 'transcription_result' in job:
             # Use GPT-4 AI detection
-            await progress_callback(0, "Analyse IA de la vidéo avec GPT-4...")
+            await progress_callback(0, "✅ Réutilisation de la transcription Whisper existante...")
+            await progress_callback(10, "🤖 Analyse IA avec GPT-4 pour détecter les moments viraux...")
             transcription_result = job['transcription_result']
 
             detector = ClipDetector()
@@ -399,6 +421,7 @@ async def generate_clips_task(
             # Check if we have transcription from Whisper (local)
             if 'transcription_result' in job:
                 # Use Whisper transcription segments
+                await progress_callback(5, "✅ Utilisation de la transcription Whisper existante...")
                 transcription_result = job['transcription_result']
                 segments = transcription_result['segments']
             else:
@@ -445,6 +468,7 @@ async def generate_clips_task(
         # Préparer les segments de transcription pour les sous-titres
         transcription_segments = None
         if add_subtitles and 'transcription_result' in job:
+            await progress_callback(35, "✅ Utilisation de la transcription Whisper pour les sous-titres...")
             transcription_segments = job['transcription_result']['segments']
 
         extractor = ClipExtractor()
@@ -460,25 +484,28 @@ async def generate_clips_task(
             subtitle_position=subtitle_position
         )
 
-        # Convert file paths to URLs
-        for clip in extracted_clips:
+        # Convert file paths to URLs and add download URLs
+        for idx, clip in enumerate(extracted_clips):
             abs_path = Path(clip['file_path'])
             rel_path = abs_path.relative_to(settings.OUTPUT_DIR)
             clip['url'] = f"/outputs/{rel_path.as_posix()}"
+            clip['download_url'] = f"/download-clip/{job_id}/{idx}"
 
         # Store result
         job['short_clips_result'] = {
             "success": True,
             "clips": extracted_clips,
             "num_clips": len(extracted_clips),
-            "format": clip_format
+            "format": clip_format,
+            "has_subtitles": add_subtitles,
+            "subtitle_style": subtitle_style if add_subtitles else None
         }
         job['clips_generation_status'] = 'completed'
 
         # Save to database
         update_job_phase2_result(job_id, 'short_clips', job['short_clips_result'])
 
-        await progress_callback(100, f"{len(extracted_clips)} clips générés avec succès !")
+        await progress_callback(100, f"✅ {len(extracted_clips)} clips générés avec succès ! Téléchargement disponible.")
         await ws_manager.send_result(job_id, {'short_clips': job['short_clips_result']})
 
     except Exception as e:
@@ -490,7 +517,7 @@ async def generate_clips_task(
 
 @router.get("/clips/{job_id}")
 async def get_short_clips(job_id: str):
-    """Get short clips result for a job"""
+    """Get short clips result for a job with download links"""
     if job_id not in active_jobs:
         raise HTTPException(status_code=404, detail="Job not found")
 
@@ -499,9 +526,17 @@ async def get_short_clips(job_id: str):
     if 'short_clips_result' not in job:
         raise HTTPException(status_code=404, detail="Short clips not available")
 
+    clips_result = job['short_clips_result']
+
+    # Ensure download URLs are present for each clip (backward compatibility)
+    for idx, clip in enumerate(clips_result.get('clips', [])):
+        if 'download_url' not in clip:
+            clip['download_url'] = f"/download-clip/{job_id}/{idx}"
+
     return {
         "job_id": job_id,
-        "short_clips": job['short_clips_result']
+        "short_clips": clips_result,
+        "message": "✅ Clips courts générés - Téléchargement disponible"
     }
 
 

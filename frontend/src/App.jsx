@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 function App() {
+  const [processingMode, setProcessingMode] = useState(null) // 'local' or 'gpt4'
   const [file, setFile] = useState(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -235,6 +236,7 @@ function App() {
     setError(null)
     setProgress(0)
     setProgressMessage('')
+    setProcessingMode(null) // Reset mode selection
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -263,6 +265,7 @@ function App() {
     formData.append('whisper_model', settings.whisperModel)
     formData.append('enable_audio_enhancement', settings.enableAudioEnhancement)
     formData.append('noise_reduction_strength', settings.noiseReductionStrength)
+    formData.append('processing_mode', processingMode) // Add processing mode
 
     try {
       const response = await fetch('/api/upload', {
@@ -630,7 +633,228 @@ function App() {
       ) : (
         /* Main Processing View */
         <>
-      {!file ? (
+      {/* Mode Selection Screen - First Screen */}
+      {!processingMode ? (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '30px',
+          padding: '40px 20px',
+          maxWidth: '900px',
+          margin: '0 auto'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ color: '#0ea5e9', marginBottom: '10px', fontSize: '28px' }}>
+              Choisissez votre mode de traitement
+            </h2>
+            <p style={{ color: '#888', fontSize: '16px' }}>
+              Sélectionnez la méthode qui convient le mieux à vos besoins
+            </p>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '25px',
+            marginTop: '20px'
+          }}>
+            {/* Local Mode */}
+            <div
+              onClick={() => setProcessingMode('local')}
+              style={{
+                padding: '30px',
+                backgroundColor: '#1a2a1a',
+                border: '3px solid #22c55e',
+                borderRadius: '15px',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                position: 'relative'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)'
+                e.currentTarget.style.boxShadow = '0 8px 30px rgba(34, 197, 94, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                backgroundColor: '#22c55e',
+                color: '#000',
+                padding: '5px 12px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>
+                GRATUIT
+              </div>
+
+              <div style={{ fontSize: '50px', marginBottom: '15px', textAlign: 'center' }}>
+                ⚡
+              </div>
+
+              <h3 style={{
+                color: '#22c55e',
+                fontSize: '24px',
+                marginBottom: '15px',
+                textAlign: 'center'
+              }}>
+                Mode Local
+              </h3>
+
+              <p style={{
+                color: '#aaa',
+                fontSize: '14px',
+                lineHeight: '1.6',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                Traitement rapide et gratuit sans coût API
+              </p>
+
+              <div style={{
+                backgroundColor: '#0f1f0f',
+                padding: '15px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#ccc',
+                lineHeight: '1.8'
+              }}>
+                <div style={{ marginBottom: '8px' }}>✓ Détection de silence (locale)</div>
+                <div style={{ marginBottom: '8px' }}>✓ Détection d'hésitations basique</div>
+                <div style={{ marginBottom: '8px' }}>✓ Export XML (Premiere/Final Cut)</div>
+                <div style={{ marginBottom: '8px' }}>✓ Traitement rapide</div>
+                <div style={{ color: '#888' }}>✗ Pas d'analyse IA avancée</div>
+              </div>
+
+              <div style={{
+                marginTop: '20px',
+                textAlign: 'center',
+                padding: '12px',
+                backgroundColor: '#22c55e',
+                color: '#000',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                🚀 Choisir le Mode Local
+              </div>
+            </div>
+
+            {/* GPT-4 Enhanced Mode */}
+            <div
+              onClick={() => setProcessingMode('gpt4')}
+              style={{
+                padding: '30px',
+                backgroundColor: '#1a1a2a',
+                border: '3px solid #a78bfa',
+                borderRadius: '15px',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                position: 'relative'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.02)'
+                e.currentTarget.style.boxShadow = '0 8px 30px rgba(167, 139, 250, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                backgroundColor: '#a78bfa',
+                color: '#000',
+                padding: '5px 12px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>
+                PREMIUM
+              </div>
+
+              <div style={{ fontSize: '50px', marginBottom: '15px', textAlign: 'center' }}>
+                🤖
+              </div>
+
+              <h3 style={{
+                color: '#a78bfa',
+                fontSize: '24px',
+                marginBottom: '15px',
+                textAlign: 'center'
+              }}>
+                Mode GPT-4
+              </h3>
+
+              <p style={{
+                color: '#aaa',
+                fontSize: '14px',
+                lineHeight: '1.6',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                Intelligence artificielle pour une analyse optimale
+              </p>
+
+              <div style={{
+                backgroundColor: '#0f0f1f',
+                padding: '15px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#ccc',
+                lineHeight: '1.8'
+              }}>
+                <div style={{ marginBottom: '8px' }}>✓ Détection de silence (locale)</div>
+                <div style={{ marginBottom: '8px', color: '#a78bfa' }}>✓ Détection d'hésitations IA</div>
+                <div style={{ marginBottom: '8px', color: '#a78bfa' }}>✓ Détection des meilleurs moments</div>
+                <div style={{ marginBottom: '8px', color: '#a78bfa' }}>✓ Analyse des vannes/originalité</div>
+                <div style={{ color: '#a78bfa' }}>✓ Titres & descriptions accrocheurs</div>
+              </div>
+
+              <div style={{
+                marginTop: '20px',
+                textAlign: 'center',
+                padding: '12px',
+                backgroundColor: '#a78bfa',
+                color: '#000',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                ✨ Choisir le Mode GPT-4
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            marginTop: '20px',
+            padding: '20px',
+            backgroundColor: '#1a1a2a',
+            borderRadius: '10px',
+            border: '1px solid #2a2a4a',
+            fontSize: '13px',
+            color: '#aaa',
+            lineHeight: '1.8'
+          }}>
+            <div style={{ color: '#0ea5e9', fontWeight: 'bold', marginBottom: '10px', fontSize: '15px' }}>
+              💡 Quelle différence entre les deux modes ?
+            </div>
+            <div style={{ marginBottom: '8px' }}>
+              <strong style={{ color: '#22c55e' }}>Mode Local :</strong> Parfait pour un montage rapide. La détection de silence fonctionne très bien en local, c'est gratuit et rapide.
+            </div>
+            <div>
+              <strong style={{ color: '#a78bfa' }}>Mode GPT-4 :</strong> Utilise l'intelligence artificielle pour une analyse approfondie de votre vidéo. GPT-4 analyse le contenu pour détecter les "heuu", identifier les meilleurs moments, les vannes, l'originalité, et génère des titres/descriptions accrocheurs. Note : La détection de silence reste locale car elle fonctionne parfaitement ainsi.
+            </div>
+          </div>
+        </div>
+      ) : !file ? (
         <div
           className={`upload-area ${isDragging ? 'dragover' : ''}`}
           onDragOver={handleDragOver}
@@ -641,6 +865,36 @@ function App() {
           <div className="upload-icon">📁</div>
           <div className="upload-text">Drop your video here or click to browse</div>
           <div className="upload-hint">Supports MP4 and MOV files (up to 10GB)</div>
+          <div style={{
+            marginTop: '15px',
+            padding: '10px 20px',
+            backgroundColor: processingMode === 'gpt4' ? '#1a1a2a' : '#1a2a1a',
+            borderRadius: '8px',
+            fontSize: '14px',
+            color: processingMode === 'gpt4' ? '#a78bfa' : '#22c55e',
+            border: processingMode === 'gpt4' ? '1px solid #2a2a4a' : '1px solid #2a4a2a'
+          }}>
+            {processingMode === 'gpt4' ? '🤖 Mode GPT-4 sélectionné' : '⚡ Mode Local sélectionné'}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setProcessingMode(null)
+            }}
+            style={{
+              marginTop: '15px',
+              padding: '8px 16px',
+              backgroundColor: '#ef4444',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 'bold'
+            }}
+          >
+            ← Changer de mode
+          </button>
           <input
             ref={fileInputRef}
             type="file"
@@ -1103,6 +1357,244 @@ function App() {
               </a>
             )}
           </div>
+
+          {/* GPT-4 Enhanced Results */}
+          {result.gpt4_analysis && (
+            <div style={{ marginTop: '30px', paddingTop: '30px', borderTop: '2px solid #a78bfa' }}>
+              <h3 style={{ color: '#a78bfa', marginBottom: '20px' }}>
+                🤖 Analyse GPT-4 Améliorée
+              </h3>
+
+              {/* Catchy Titles */}
+              {result.gpt4_analysis.enhanced_features.titles_and_description?.titles && (
+                <div style={{
+                  marginBottom: '25px',
+                  padding: '20px',
+                  backgroundColor: '#1a1a2a',
+                  borderRadius: '10px',
+                  border: '2px solid #a78bfa'
+                }}>
+                  <h4 style={{ color: '#a78bfa', marginTop: 0 }}>📝 Titres Accrocheurs Générés par GPT-4</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
+                    {result.gpt4_analysis.enhanced_features.titles_and_description.titles.map((title, idx) => (
+                      <div key={idx} style={{
+                        padding: '15px',
+                        backgroundColor: '#0f0f1f',
+                        borderRadius: '8px',
+                        border: '1px solid #2a2a4a',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ color: '#a78bfa', fontSize: '12px', marginBottom: '5px' }}>
+                            {title.style?.toUpperCase()}
+                          </div>
+                          <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>
+                            {title.text}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(title.text)
+                            alert('Titre copié ! 📋')
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#a78bfa',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 'bold',
+                            marginLeft: '15px'
+                          }}
+                        >
+                          📋 Copier
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {result.gpt4_analysis.enhanced_features.titles_and_description?.description && (
+                <div style={{
+                  marginBottom: '25px',
+                  padding: '20px',
+                  backgroundColor: '#1a1a2a',
+                  borderRadius: '10px',
+                  border: '2px solid #a78bfa'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <h4 style={{ color: '#a78bfa', margin: 0 }}>📄 Description Accrocheuse</h4>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(result.gpt4_analysis.enhanced_features.titles_and_description.description.full_text)
+                        alert('Description copiée ! 📋')
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#a78bfa',
+                        color: '#000',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      📋 Copier
+                    </button>
+                  </div>
+                  <pre style={{
+                    padding: '15px',
+                    backgroundColor: '#0f0f1f',
+                    borderRadius: '8px',
+                    whiteSpace: 'pre-wrap',
+                    fontSize: '14px',
+                    color: '#e0e0e0',
+                    border: '1px solid #2a2a4a',
+                    maxHeight: '300px',
+                    overflowY: 'auto'
+                  }}>
+                    {result.gpt4_analysis.enhanced_features.titles_and_description.description.full_text}
+                  </pre>
+                </div>
+              )}
+
+              {/* Best Moments */}
+              {result.gpt4_analysis.enhanced_features.best_moments && result.gpt4_analysis.enhanced_features.best_moments.length > 0 && (
+                <div style={{
+                  marginBottom: '25px',
+                  padding: '20px',
+                  backgroundColor: '#1a2a1a',
+                  borderRadius: '10px',
+                  border: '2px solid #22c55e'
+                }}>
+                  <h4 style={{ color: '#22c55e', marginTop: 0 }}>⭐ Meilleurs Moments Détectés ({result.gpt4_analysis.enhanced_features.best_moments.length})</h4>
+                  <div style={{ display: 'grid', gap: '12px', marginTop: '15px' }}>
+                    {result.gpt4_analysis.enhanced_features.best_moments.map((moment, idx) => (
+                      <div key={idx} style={{
+                        padding: '15px',
+                        backgroundColor: '#0f1f0f',
+                        borderRadius: '8px',
+                        border: '1px solid #2a4a2a'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                          <div style={{ color: '#22c55e', fontSize: '16px', fontWeight: 'bold', flex: 1 }}>
+                            {moment.title}
+                          </div>
+                          <div style={{
+                            padding: '4px 10px',
+                            backgroundColor: '#22c55e',
+                            color: '#000',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}>
+                            {moment.viral_score || 'N/A'}/100
+                          </div>
+                        </div>
+                        <div style={{ color: '#888', fontSize: '13px', marginBottom: '8px' }}>
+                          {moment.why_good}
+                        </div>
+                        <div style={{ color: '#4ade80', fontSize: '12px' }}>
+                          Type: {moment.moment_type}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Jokes and Originality */}
+              {result.gpt4_analysis.enhanced_features.jokes && result.gpt4_analysis.enhanced_features.jokes.length > 0 && (
+                <div style={{
+                  marginBottom: '25px',
+                  padding: '20px',
+                  backgroundColor: '#2a1a1a',
+                  borderRadius: '10px',
+                  border: '2px solid #fbbf24'
+                }}>
+                  <h4 style={{ color: '#fbbf24', marginTop: 0 }}>😂 Vannes et Moments Originaux ({result.gpt4_analysis.enhanced_features.jokes.length})</h4>
+                  <div style={{ display: 'grid', gap: '12px', marginTop: '15px' }}>
+                    {result.gpt4_analysis.enhanced_features.jokes.map((joke, idx) => (
+                      <div key={idx} style={{
+                        padding: '15px',
+                        backgroundColor: '#1f0f0f',
+                        borderRadius: '8px',
+                        border: '1px solid #4a2a2a'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                          <div style={{ color: '#fff', fontSize: '15px', flex: 1 }}>
+                            "{joke.text}"
+                          </div>
+                          <div style={{
+                            padding: '4px 10px',
+                            backgroundColor: '#fbbf24',
+                            color: '#000',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: 'bold',
+                            marginLeft: '10px'
+                          }}>
+                            {joke.funny_score || 'N/A'}/100
+                          </div>
+                        </div>
+                        <div style={{ color: '#888', fontSize: '12px', marginBottom: '5px' }}>
+                          Type: {joke.type}
+                        </div>
+                        <div style={{ color: '#fbbf24', fontSize: '13px' }}>
+                          {joke.why_funny}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Filler Words Detection */}
+              {result.gpt4_analysis.enhanced_features.filler_words && result.gpt4_analysis.enhanced_features.filler_words.length > 0 && (
+                <div style={{
+                  marginBottom: '25px',
+                  padding: '20px',
+                  backgroundColor: '#1a1a2a',
+                  borderRadius: '10px',
+                  border: '2px solid #ef4444'
+                }}>
+                  <h4 style={{ color: '#ef4444', marginTop: 0 }}>
+                    🎤 Hésitations Détectées par GPT-4 ({result.gpt4_analysis.enhanced_features.filler_words.length})
+                  </h4>
+                  <div style={{ fontSize: '13px', color: '#aaa', marginBottom: '15px' }}>
+                    GPT-4 a analysé le contexte pour identifier les véritables hésitations
+                  </div>
+                  <div style={{
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    display: 'grid',
+                    gap: '8px'
+                  }}>
+                    {result.gpt4_analysis.enhanced_features.filler_words.slice(0, 20).map((filler, idx) => (
+                      <div key={idx} style={{
+                        padding: '10px',
+                        backgroundColor: '#0f0f1f',
+                        borderRadius: '6px',
+                        border: '1px solid #2a2a2a',
+                        fontSize: '13px'
+                      }}>
+                        <span style={{ color: '#ef4444', fontWeight: 'bold' }}>"{filler.word}"</span>
+                        <span style={{ color: '#666', margin: '0 8px' }}>dans</span>
+                        <span style={{ color: '#aaa' }}>"{filler.context?.substring(0, 60)}..."</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Phase 2: Transcription & YouTube Optimization */}
           <div className="phase2-section" style={{ marginTop: '30px', paddingTop: '30px', borderTop: '2px solid #e0e0e0' }}>

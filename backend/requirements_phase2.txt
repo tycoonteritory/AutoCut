@@ -1,7 +1,8 @@
 # Phase 2 dependencies - Transcription & YouTube Optimization
 
 # OpenAI (Whisper + GPT-4)
-openai==1.54.0
+openai>=1.55.3  # Fix for httpx 0.28.0 proxies issue
+httpx==0.27.2  # Pin to avoid proxies parameter issue
 openai-whisper==20231117
 
 # Image processing for thumbnails

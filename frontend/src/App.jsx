@@ -317,6 +317,9 @@ function App() {
   }
 
   const formatTime = (seconds) => {
+    if (seconds === undefined || seconds === null || isNaN(seconds)) {
+      return '0:00'
+    }
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
@@ -1762,6 +1765,31 @@ function App() {
                     }}>
                       {transcriptionResult.text || 'No text available'}
                     </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(transcriptionResult.text || '')
+                          .then(() => {
+                            alert('✅ Transcription copiée dans le presse-papier !')
+                          })
+                          .catch((err) => {
+                            console.error('Erreur lors de la copie:', err)
+                            alert('❌ Erreur lors de la copie dans le presse-papier')
+                          })
+                      }}
+                      style={{
+                        marginTop: '10px',
+                        padding: '10px 20px',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      📋 Copier le transcript dans le presse-papier
+                    </button>
                   </div>
                   <div className="download-section">
                     <h4>📥 Télécharger la Transcription :</h4>

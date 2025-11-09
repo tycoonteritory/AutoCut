@@ -14,27 +14,36 @@ logger = logging.getLogger(__name__)
 class FillerWordsDetector:
     """Detects filler words (hesitations) in French audio using Whisper transcription"""
 
-    # French filler words patterns
+    # French filler words patterns - Improved and more comprehensive
     # Using word boundaries and common variations
     FILLER_PATTERNS = [
-        # "Euh" variations
-        r'\b(?:euh+|heu+|eu+h*|uh+)\b',
+        # "Euh" variations - Enhanced with more phonetic variants
+        r'\b(?:eu+h*|heu+|euh+|uh+|euuh+|euuuh+|heuuh+)\b',
 
-        # "Hum" variations
-        r'\b(?:hum+|hmm+|mm+h*|mh+)\b',
+        # "Hum" variations - More comprehensive
+        r'\b(?:hu+m+|hm+|hmm+|mm+h*|mh+|heu+m+)\b',
 
-        # "Ben" and "Bah"
-        r'\b(?:ben|bah|beh)\b',
+        # "Ah" and "Oh" hesitations - Common but often missed
+        r'\b(?:ah+|aah+|aaah+|oh+|ooh+|oooh+)\b',
 
-        # Common hesitation phrases
-        r'\b(?:alors\s+euh+|donc\s+euh+|et\s+euh+)\b',
-        r'\b(?:comment\s+dire|disons|voilà)\b',
+        # "Ben", "Bah", "Bof" - Colloquial fillers
+        r'\b(?:ben+|bah+|beh+|bof+|ouais+\s+ben+)\b',
 
-        # Repeated words (stuttering)
-        r'\b(\w+)\s+\1\b',  # e.g., "je je", "le le"
+        # Common French filler phrases - More extensive list
+        r'\b(?:alors\s+euh+|donc\s+euh+|et\s+euh+|mais\s+euh+)\b',
+        r'\b(?:comment\s+dire|comment\s+on\s+dit|disons|voilà|quoi)\b',
+        r'\b(?:en\s+fait|du\s+coup|genre|tu\s+vois|vous\s+voyez)\b',
+        r'\b(?:c\'est-à-dire|enfin\s+bon|bon\s+ben|bon\s+voilà)\b',
 
-        # Breathing sounds (optional)
-        r'\b(?:\[breath\]|\[respiration\])\b',
+        # Repeated words (stuttering) - More strict to avoid false positives
+        r'\b([a-zàâäéèêëïîôùûüÿœæç]{2,})\s+\1\b',  # e.g., "je je", "le le", but not "a a"
+
+        # Hesitation sounds transcribed by Whisper
+        r'\b(?:\[breath\]|\[respiration\]|\[soupir\]|\[hésitation\])\b',
+        r'^\.\.\.$',  # Sometimes Whisper uses "..." for hesitations
+
+        # Very short utterances that are likely hesitations
+        r'^(?:m+|e+|a+|o+)$',  # Single letter repetitions like "mmm", "eee"
     ]
 
     def __init__(

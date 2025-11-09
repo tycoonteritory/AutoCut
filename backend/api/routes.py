@@ -427,3 +427,51 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         ws_manager.disconnect(websocket, job_id)
+
+
+@router.post("/generate-titles/{job_id}")
+async def generate_titles(job_id: str, request_data: dict):
+    """
+    Generate YouTube-optimized titles using local AI
+
+    Args:
+        job_id: Job ID from processing
+        request_data: Dict with 'transcription' key
+
+    Returns:
+        Generated titles for A/B testing
+    """
+    from ..services.ai_services.local_title_generator import LocalTitleGenerator
+
+    if job_id not in active_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    try:
+        transcription = request_data.get('transcription', '')
+
+        if not transcription:
+            raise HTTPException(
+                status_code=400,
+                detail="Transcription text is required"
+            )
+
+        # Initialize local title generator
+        # Try to use Ollama if available, otherwise use fallback
+        title_generator = LocalTitleGenerator()
+
+        # Generate 3 titles for A/B testing
+        result = title_generator.generate_titles(
+            transcription_text=transcription,
+            num_titles=3
+        )
+
+        logger.info(f"Generated {len(result['titles'])} titles for job {job_id}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error generating titles for job {job_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating titles: {str(e)}"
+        )

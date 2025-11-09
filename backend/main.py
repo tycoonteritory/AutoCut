@@ -8,7 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from .api.routes import router as phase1_router
-from .api.routes_phase2 import router as phase2_router
+# Phase 2 routes disabled - simplified version (no shorts, no OpenAI optimization)
+# from .api.routes_phase2 import router as phase2_router
 from .config import settings
 from .database import init_db
 
@@ -22,9 +23,9 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="AutoCut API",
-    description="Automatic silence detection, video cutting, transcription and YouTube optimization service",
-    version="2.0.0"
+    title="AutoCut API - Simplified",
+    description="Automatic silence and filler words detection with local AI title generation",
+    version="2.1.0"
 )
 
 # Configure CORS for local development
@@ -38,7 +39,8 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(phase1_router, prefix="/api")
-app.include_router(phase2_router, prefix="/api")
+# Phase 2 routes disabled - simplified version
+# app.include_router(phase2_router, prefix="/api")
 
 # Mount static files for outputs (thumbnails, etc.)
 app.mount("/outputs", StaticFiles(directory=str(settings.OUTPUT_DIR)), name="outputs")

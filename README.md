@@ -2,32 +2,43 @@
 
 AutoCut est une application web locale qui détecte automatiquement les silences dans vos vidéos et génère des fichiers de montage compatibles avec **Adobe Premiere Pro** et **Final Cut Pro X**.
 
-![AutoCut](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![AutoCut](https://img.shields.io/badge/version-2.1.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8+-green.svg)
 ![Node](https://img.shields.io/badge/node-18+-green.svg)
 
-## 🆕 Nouveautés v2.0.0
+## 🆕 Nouveautés v2.1.0 - Version Simplifiée
 
-- 🎤 **Détection d'hésitations vocales** - Supprime automatiquement les "euh", "hum", "ben", etc.
-- 🔊 **Amélioration audio** - Débruitage avant détection pour plus de précision
-- 💾 **Persistance des jobs** - Base de données SQLite, survit aux redémarrages
-- 📜 **Historique complet** - Consultez tous vos traitements passés avec statistiques
+- 🎯 **Détection améliorée des "euh"** - Patterns plus robustes et complets (ah, oh, ben, en fait, du coup, genre, etc.)
+- 📋 **Copier-coller de transcription** - Bouton pour copier directement le texte extrait
+- 🤖 **IA locale pour titres YouTube** - Génération de 3 titres optimisés pour A/B testing (via Ollama)
+- ⚡ **Application simplifiée** - Suppression des fonctionnalités complexes (shorts, post-traitement OpenAI, etc.)
+- 🔒 **100% Local** - Fonctionne entièrement en local, pas besoin d'API OpenAI
 
-> **📥 Mise à jour ?** Consultez [UPDATE.md](UPDATE.md) pour les instructions
+> **📖 Configuration IA Locale ?** Consultez [SETUP_IA_LOCALE.md](SETUP_IA_LOCALE.md) pour installer Ollama
 
 ## ✨ Fonctionnalités
 
-**Phase 1 - Détection & Coupe :**
+**Traitement Vidéo :**
 - 🎯 **Détection automatique des silences** dans vos vidéos MP4/MOV
-- 🎤 **Détection des hésitations** vocales (euh, hum, ben, etc.) - **NOUVEAU**
-- 🔊 **Débruitage audio** optionnel pour meilleure précision - **NOUVEAU**
+- 🎤 **Détection améliorée des hésitations** vocales (euh, ah, oh, hum, ben, en fait, du coup, genre, etc.)
+- 🔊 **Débruitage audio** optionnel pour meilleure précision
 - ✂️ **Coupes intelligentes** basées sur l'analyse audio
 - 📤 **Export XML** compatible Premiere Pro et Final Cut Pro X
 - 📊 **Progression en temps réel** via WebSocket
-- 💾 **Historique persistant** avec statistiques - **NOUVEAU**
 - 💪 **Gestion de fichiers volumineux** (>1h de vidéo)
-- 🎨 **Interface web moderne** et intuitive
-- ⚙️ **Paramètres ajustables** (seuil, durée minimale, padding)
+- ⚙️ **Paramètres ajustables** (seuil, durée minimale, padding, sensibilité)
+
+**IA Locale & Optimisation YouTube :**
+- 📋 **Copie de transcription** en un clic
+- 🤖 **Génération de 3 titres YouTube** optimisés pour A/B testing
+- 🎯 **Titres variés** : Émotionnel, Informatif, Intrigant
+- 🔒 **100% Local** avec Ollama (ou mode fallback sans IA)
+- 💾 **Historique persistant** avec statistiques
+
+**Interface Simplifiée :**
+- 🎨 **Interface web moderne** et épurée
+- ⚡ **Workflow optimisé** : Upload → Traitement → Copie → Titres → Export
+- 🚫 **Supprimé** : Shorts, sous-titres, post-traitement OpenAI (simplicité)
 
 ## 🚀 Installation Rapide
 

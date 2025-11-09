@@ -289,25 +289,33 @@ async def download_transcription(job_id: str, format: str):
         job_id: Job ID
         format: Format (srt, vtt, txt)
     """
-    if job_id not in active_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+    # Try to get from database first (persistent storage)
+    db = SessionLocal()
+    try:
+        job = JobRepository.get_job(db, job_id)
 
-    job = active_jobs[job_id]
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
 
-    if 'transcription_result' not in job:
-        raise HTTPException(status_code=404, detail="Transcription not available")
+        # Check if job has transcription result
+        if not job.result or 'transcription' not in job.result:
+            raise HTTPException(status_code=404, detail="Transcription not available")
 
-    # Get file path
-    file_key = f"{format}_path"
-    if file_key not in job['transcription_result']:
-        raise HTTPException(status_code=404, detail=f"Format {format} not available")
+        transcription_result = job.result['transcription']
 
-    file_path = job['transcription_result'][file_key]
+        # Get file path
+        file_key = f"{format}_path"
+        if file_key not in transcription_result:
+            raise HTTPException(status_code=404, detail=f"Format {format} not available")
 
-    if not Path(file_path).exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        file_path = transcription_result[file_key]
 
-    return FileResponse(file_path, filename=Path(file_path).name)
+        if not Path(file_path).exists():
+            raise HTTPException(status_code=404, detail="File not found")
+
+        return FileResponse(file_path, filename=Path(file_path).name)
+    finally:
+        db.close()
 
 
 @router.post("/generate-clips/{job_id}")

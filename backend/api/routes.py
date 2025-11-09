@@ -372,27 +372,35 @@ async def download_export(job_id: str, format: str):
         job_id: Job ID
         format: Export format ('premiere_pro' or 'final_cut_pro')
     """
-    if job_id not in active_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
+    # Try to get from database first (persistent storage)
+    db = SessionLocal()
+    try:
+        job = JobRepository.get_job(db, job_id)
 
-    job = active_jobs[job_id]
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
 
-    if job['status'] != 'completed':
-        raise HTTPException(status_code=400, detail="Job not completed yet")
+        if job.status != 'completed':
+            raise HTTPException(status_code=400, detail="Job not completed yet")
 
-    if 'result' not in job or 'exports' not in job['result']:
-        raise HTTPException(status_code=404, detail="Export files not found")
+        # Get export path based on format
+        if format == 'premiere_pro':
+            export_path = job.premiere_pro_export
+        elif format == 'final_cut_pro':
+            export_path = job.final_cut_pro_export
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid format: {format}")
 
-    export_path = job['result']['exports'].get(format)
+        if not export_path or not Path(export_path).exists():
+            raise HTTPException(status_code=404, detail=f"Export file not found for format: {format}")
 
-    if not export_path or not Path(export_path).exists():
-        raise HTTPException(status_code=404, detail=f"Export file not found for format: {format}")
-
-    return FileResponse(
-        export_path,
-        media_type='application/xml',
-        filename=Path(export_path).name
-    )
+        return FileResponse(
+            export_path,
+            media_type='application/xml',
+            filename=Path(export_path).name
+        )
+    finally:
+        db.close()
 
 
 @router.websocket("/ws/{job_id}")

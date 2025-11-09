@@ -286,7 +286,23 @@ function App() {
       })
 
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`)
+        // Try to get detailed error message from response
+        let errorMessage = `Upload failed: ${response.statusText}`
+
+        try {
+          const errorData = await response.json()
+          if (errorData.detail) {
+            errorMessage = errorData.detail
+          }
+        } catch (e) {
+          // If response is not JSON or can't be read, use statusText
+          // Add helpful context for common errors
+          if (response.status === 500) {
+            errorMessage = '❌ Erreur serveur lors de l\'upload. Vérifiez les logs du backend ou redémarrez le serveur.'
+          }
+        }
+
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()

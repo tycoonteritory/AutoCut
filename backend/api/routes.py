@@ -83,6 +83,9 @@ async def upload_video(
     upload_path = settings.UPLOAD_DIR / f"{job_id}_{file.filename}"
 
     try:
+        # Ensure upload directory exists
+        settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
         async with aiofiles.open(upload_path, 'wb') as f:
             while chunk := await file.read(1024 * 1024):  # Read 1MB at a time
                 await f.write(chunk)
@@ -149,9 +152,24 @@ async def upload_video(
             "message": "Video uploaded successfully. Processing started."
         }
 
+    except PermissionError as e:
+        logger.error(f"Permission error uploading file: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"❌ Erreur de permissions: impossible d'écrire dans le dossier uploads. Vérifiez les permissions du dossier."
+        )
+    except OSError as e:
+        logger.error(f"OS error uploading file: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"❌ Erreur système: {str(e)}. Vérifiez que le disque n'est pas plein et que le dossier uploads existe."
+        )
     except Exception as e:
-        logger.error(f"Error uploading file: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+        logger.error(f"Error uploading file: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"❌ Erreur lors de l'upload: {str(e)}"
+        )
 
 
 async def process_video_task(

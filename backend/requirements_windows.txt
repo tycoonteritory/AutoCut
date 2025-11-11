@@ -1,0 +1,44 @@
+# AutoCut - Requirements pour Windows
+# Installation optimisée pour éviter les erreurs de compilation
+
+# Dépendances de base
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+websockets==12.0
+pydub==0.25.1
+numpy==1.26.4
+aiofiles==23.2.1
+python-dotenv==1.0.0
+
+# Audio processing - Installer NumPy d'abord pour éviter les erreurs
+noisereduce==3.0.0
+soundfile==0.12.1
+
+# Installer numba avant librosa (évite des erreurs de compilation)
+numba>=0.57.0
+librosa==0.10.1
+
+# Base de données
+sqlalchemy==2.0.23
+alembic==1.12.1
+
+# Phase 2 - Transcription & YouTube Optimization
+# IMPORTANT: Ordre d'installation pour éviter les conflits
+tiktoken==0.7.0
+openai>=1.55.3
+httpx==0.27.2
+
+# OpenCV et Pillow (versions avec wheels pré-compilés pour Windows)
+opencv-python==4.10.0.84
+Pillow==10.4.0
+
+# Traitement de texte
+pysrt==1.1.2
+
+# ATTENTION: openai-whisper nécessite des outils de compilation sur Windows
+# Si l'installation échoue, consultez INSTALL_WINDOWS.md
+openai-whisper==20231117
+
+# Spacy - installer le modèle après avec: python -m spacy download en_core_web_sm
+spacy==3.7.5

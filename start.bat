@@ -94,14 +94,101 @@ echo       → Mise à jour de pip...
 python -m pip install --quiet --upgrade pip setuptools wheel
 
 echo       → Installation des dépendances Python...
-pip install --quiet -r backend\requirements.txt
+echo       (Cela peut prendre plusieurs minutes...)
+echo.
+
+REM Déterminer quel fichier requirements utiliser
+set REQUIREMENTS_FILE=backend\requirements.txt
+if exist "backend\requirements_windows.txt" (
+    set REQUIREMENTS_FILE=backend\requirements_windows.txt
+    echo       ℹ️  Utilisation de requirements_windows.txt
+)
+
+REM Première tentative d'installation silencieuse
+pip install --quiet -r !REQUIREMENTS_FILE! > pip_install.log 2>&1
 if %errorlevel% neq 0 (
-    echo       ✗ Échec de l'installation des dépendances Python
-    echo       Nouvelle tentative en mode verbeux...
-    pip install -r backend\requirements.txt
-    if %errorlevel% neq 0 (
-        pause
-        exit /b 1
+    echo.
+    echo       ⚠️  Certaines dépendances ont échoué
+    echo       → Tentative d'installation en mode verbeux...
+    echo.
+
+    REM Afficher les erreurs
+    type pip_install.log | findstr /C:"error" /C:"ERROR" /C:"failed" /C:"FAILED"
+    echo.
+
+    REM Vérifier si c'est openai-whisper qui pose problème
+    type pip_install.log | findstr /C:"openai-whisper" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo       ════════════════════════════════════════════════
+        echo       ⚠️  PROBLÈME DÉTECTÉ : openai-whisper
+        echo       ════════════════════════════════════════════════
+        echo.
+        echo       openai-whisper nécessite Visual Studio Build Tools
+        echo.
+        echo       SOLUTIONS :
+        echo.
+        echo       1. Installer Visual Studio Build Tools
+        echo          https://visualstudio.microsoft.com/visual-cpp-build-tools/
+        echo.
+        echo       2. Consulter le guide détaillé :
+        echo          Ouvrez INSTALL_WINDOWS.md
+        echo.
+        echo       3. Continuer SANS openai-whisper ^(non recommandé^)
+        echo          Les fonctionnalités de transcription ne seront pas disponibles
+        echo.
+        echo       ════════════════════════════════════════════════
+        echo.
+
+        choice /C 123 /N /M "Choisissez une option (1, 2 ou 3) : "
+        if !errorlevel! equ 1 (
+            echo.
+            echo       Veuillez installer Visual Studio Build Tools, puis relancez start.bat
+            start https://visualstudio.microsoft.com/visual-cpp-build-tools/
+            pause
+            exit /b 1
+        )
+        if !errorlevel! equ 2 (
+            echo.
+            echo       Ouverture du guide d'installation...
+            if exist "INSTALL_WINDOWS.md" (
+                start notepad INSTALL_WINDOWS.md
+            ) else (
+                echo       Fichier INSTALL_WINDOWS.md non trouvé
+            )
+            pause
+            exit /b 1
+        )
+        if !errorlevel! equ 3 (
+            echo.
+            echo       ⚠️  Continuation sans openai-whisper...
+            echo       → Installation des autres dépendances...
+
+            REM Créer un requirements temporaire sans openai-whisper
+            findstr /V /C:"openai-whisper" !REQUIREMENTS_FILE! > backend\requirements_temp.txt
+            pip install -r backend\requirements_temp.txt
+            del backend\requirements_temp.txt
+
+            if !errorlevel! neq 0 (
+                echo       ✗ Échec de l'installation des autres dépendances
+                pause
+                exit /b 1
+            )
+
+            echo.
+            echo       ✓ Dépendances installées ^(sauf openai-whisper^)
+            echo       ⚠️  Les fonctionnalités de transcription ne sont pas disponibles
+        )
+    ) else (
+        REM Autre type d'erreur
+        echo       → Nouvelle tentative complète...
+        pip install -r !REQUIREMENTS_FILE!
+        if !errorlevel! neq 0 (
+            echo.
+            echo       ✗ Échec de l'installation
+            echo       Consultez pip_install.log pour plus de détails
+            pause
+            exit /b 1
+        )
     )
 )
 

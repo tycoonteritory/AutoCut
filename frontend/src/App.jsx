@@ -111,8 +111,25 @@ function App() {
   const [jobHistory, setJobHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
+  // Theme state
+  const [theme, setTheme] = useState(() => {
+    // Load theme from localStorage or default to 'light'
+    return localStorage.getItem('theme') || 'light'
+  })
+
   const fileInputRef = useRef(null)
   const wsRef = useRef(null)
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  // Toggle theme function
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light')
+  }
 
   // WebSocket connection
   useEffect(() => {
@@ -527,6 +544,15 @@ function App() {
 
   return (
     <div className="container">
+      {/* Theme Toggle Button */}
+      <button
+        className="theme-toggle"
+        onClick={toggleTheme}
+        title={theme === 'light' ? 'Activer le mode sombre' : 'Activer le mode clair'}
+      >
+        {theme === 'light' ? '🌙' : '☀️'}
+      </button>
+
       <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1>🎬 AutoCut</h1>

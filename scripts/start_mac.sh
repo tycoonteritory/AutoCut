@@ -11,6 +11,40 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Configuration des ports
+BACKEND_PORT=8765
+FRONTEND_PORT=5173
+
+# Fonction pour libérer un port
+free_port() {
+    local port=$1
+    local port_name=$2
+
+    echo -e "${YELLOW}Vérification du port $port ($port_name)...${NC}"
+
+    if command -v lsof &> /dev/null; then
+        local pids=$(lsof -ti:$port 2>/dev/null)
+        if [ ! -z "$pids" ]; then
+            echo -e "${RED}Port $port occupé - libération automatique...${NC}"
+            echo "$pids" | xargs kill -9 2>/dev/null
+            sleep 1
+            echo -e "${GREEN}Port $port libéré${NC}"
+        else
+            echo -e "${GREEN}Port $port disponible${NC}"
+        fi
+    elif command -v netstat &> /dev/null; then
+        local pid=$(netstat -tlnp 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d'/' -f1)
+        if [ ! -z "$pid" ]; then
+            echo -e "${RED}Port $port occupé - libération automatique...${NC}"
+            kill -9 $pid 2>/dev/null
+            sleep 1
+            echo -e "${GREEN}Port $port libéré${NC}"
+        else
+            echo -e "${GREEN}Port $port disponible${NC}"
+        fi
+    fi
+}
+
 # Check for Python - prefer 3.12, then 3.11, then 3.10, then 3.9, then default
 PYTHON_CMD=""
 if command -v python3.12 &> /dev/null; then
@@ -110,10 +144,16 @@ cd ..
 echo -e "${GREEN}[OK] Node.js dependencies installed${NC}"
 echo ""
 
+# Free ports before starting servers
+echo "[3/5] Freeing ports..."
+free_port $BACKEND_PORT "Backend"
+free_port $FRONTEND_PORT "Frontend"
+echo ""
+
 # Start backend server
-echo "[3/4] Starting backend server on port 8765..."
+echo "[4/5] Starting backend server on port $BACKEND_PORT..."
 source backend/venv/bin/activate
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8765 > backend.log 2>&1 &
+python -m uvicorn backend.main:app --host 127.0.0.1 --port $BACKEND_PORT > backend.log 2>&1 &
 BACKEND_PID=$!
 echo "Backend PID: $BACKEND_PID"
 
@@ -121,9 +161,9 @@ echo "Backend PID: $BACKEND_PID"
 sleep 3
 
 # Start frontend server
-echo "[4/4] Starting frontend server on port 5173..."
+echo "[5/5] Starting frontend server on port $FRONTEND_PORT..."
 cd frontend
-npm run dev > ../frontend.log 2>&1 &
+npm run dev -- --strictPort > ../frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..
 echo "Frontend PID: $FRONTEND_PID"
@@ -132,8 +172,8 @@ echo ""
 echo "========================================"
 echo "  AutoCut is now running!"
 echo "  "
-echo "  Backend:  http://localhost:8765"
-echo "  Frontend: http://localhost:5173"
+echo "  Backend:  http://localhost:$BACKEND_PORT"
+echo "  Frontend: http://localhost:$FRONTEND_PORT"
 echo "  "
 echo "  Opening browser in 5 seconds..."
 echo "========================================"
@@ -143,9 +183,9 @@ sleep 5
 
 # Open browser
 if command -v open &> /dev/null; then
-    open http://localhost:5173
+    open http://localhost:$FRONTEND_PORT
 elif command -v xdg-open &> /dev/null; then
-    xdg-open http://localhost:5173
+    xdg-open http://localhost:$FRONTEND_PORT
 fi
 
 echo ""

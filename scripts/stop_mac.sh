@@ -2,6 +2,10 @@
 
 echo "Stopping AutoCut..."
 
+# Configuration des ports
+BACKEND_PORT=8765
+FRONTEND_PORT=5173
+
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -17,7 +21,8 @@ if [ -f ".autocut.pid" ]; then
 fi
 
 # Fallback: kill by port
-lsof -ti:8765 | xargs kill -9 2>/dev/null
-lsof -ti:5173 | xargs kill -9 2>/dev/null
+echo "Cleaning up ports..."
+lsof -ti:$BACKEND_PORT | xargs kill -9 2>/dev/null
+lsof -ti:$FRONTEND_PORT | xargs kill -9 2>/dev/null
 
 echo "AutoCut stopped."

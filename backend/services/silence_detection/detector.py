@@ -156,7 +156,37 @@ class SilenceDetector:
         return output_path
 
     def _get_video_duration(self, video_path: Path) -> float:
-        """Get video duration in seconds using FFprobe"""
+        """Get video duration in seconds using FFprobe
+
+        Reads actual stream duration instead of container metadata
+        to ensure accuracy even with corrupted or incorrect metadata.
+        """
+        # Try to get duration from video stream first, then audio stream
+        # This is more reliable than format duration which can be incorrect
+        for stream_type in ['v:0', 'a:0']:
+            cmd = [
+                'ffprobe',
+                '-v', 'error',
+                '-select_streams', stream_type,  # Select first video or audio stream
+                '-show_entries', 'stream=duration',
+                '-of', 'json',
+                str(video_path)
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            try:
+                data = json.loads(result.stdout)
+                if 'streams' in data and len(data['streams']) > 0:
+                    if 'duration' in data['streams'][0]:
+                        duration = float(data['streams'][0]['duration'])
+                        logger.info(f"Video duration from {stream_type} stream: {duration:.2f}s")
+                        return duration
+            except (json.JSONDecodeError, KeyError, ValueError, IndexError) as e:
+                logger.warning(f"Could not get duration from {stream_type}: {e}")
+                continue
+
+        # Fallback to format duration if stream duration is not available
+        logger.warning("Could not get stream duration, using format duration as fallback")
         cmd = [
             'ffprobe',
             '-v', 'error',
@@ -167,7 +197,9 @@ class SilenceDetector:
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         data = json.loads(result.stdout)
-        return float(data['format']['duration'])
+        duration = float(data['format']['duration'])
+        logger.info(f"Video duration from format metadata: {duration:.2f}s (fallback)")
+        return duration
 
     def detect_silence_periods(
         self,

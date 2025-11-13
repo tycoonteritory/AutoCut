@@ -2,6 +2,7 @@
 
 # ============================================
 #  🎬 AutoCut - Lanceur Unifié et Robuste
+#  Gestion automatique des ports
 # ============================================
 
 # Se déplacer dans le dossier du script
@@ -18,9 +19,51 @@ MAGENTA='\033[0;35m'
 BOLD='\033[1m'
 NC='\033[0m'
 
+# Configuration des ports
+BACKEND_PORT=8765
+FRONTEND_PORT=5173
+
 # Variables pour les PIDs
 BACKEND_PID=""
 FRONTEND_PID=""
+
+# ============================================
+# Fonction pour libérer un port
+# ============================================
+free_port() {
+    local port=$1
+    local port_name=$2
+
+    echo -e "${YELLOW}      → Vérification du port $port ($port_name)...${NC}"
+
+    # Vérifier si le port est utilisé
+    if command -v lsof &> /dev/null; then
+        local pids=$(lsof -ti:$port 2>/dev/null)
+        if [ ! -z "$pids" ]; then
+            echo -e "${RED}      ⚠️  Port $port occupé par le(s) processus: $pids${NC}"
+            echo -e "${YELLOW}      → Libération automatique du port $port...${NC}"
+            echo "$pids" | xargs kill -9 2>/dev/null
+            sleep 1
+            echo -e "${GREEN}      ✓ Port $port libéré${NC}"
+        else
+            echo -e "${GREEN}      ✓ Port $port disponible${NC}"
+        fi
+    elif command -v netstat &> /dev/null; then
+        # Fallback pour les systèmes sans lsof
+        local pid=$(netstat -tlnp 2>/dev/null | grep ":$port " | awk '{print $7}' | cut -d'/' -f1)
+        if [ ! -z "$pid" ]; then
+            echo -e "${RED}      ⚠️  Port $port occupé par le processus: $pid${NC}"
+            echo -e "${YELLOW}      → Libération automatique du port $port...${NC}"
+            kill -9 $pid 2>/dev/null
+            sleep 1
+            echo -e "${GREEN}      ✓ Port $port libéré${NC}"
+        else
+            echo -e "${GREEN}      ✓ Port $port disponible${NC}"
+        fi
+    else
+        echo -e "${YELLOW}      ⚠️  Impossible de vérifier le port (lsof/netstat non disponible)${NC}"
+    fi
+}
 
 # Fonction de nettoyage
 cleanup() {
@@ -179,17 +222,28 @@ cd ..
 echo -e "${GREEN}      ✓ Dépendances Node.js OK${NC}"
 echo ""
 
-# Étape 6: Démarrer les serveurs
-echo -e "${CYAN}[6/6]${NC} ${BOLD}Démarrage d'AutoCut...${NC}"
+# Étape 6: Libération des ports et démarrage des serveurs
+echo -e "${CYAN}[6/8]${NC} ${BOLD}Libération des ports...${NC}"
+echo ""
+
+# Libérer les ports si nécessaire
+free_port $BACKEND_PORT "Backend"
+free_port $FRONTEND_PORT "Frontend"
+
+echo -e "${GREEN}      ✓ Ports vérifiés et libérés${NC}"
+echo ""
+
+# Étape 7: Démarrer les serveurs
+echo -e "${CYAN}[7/8]${NC} ${BOLD}Démarrage d'AutoCut...${NC}"
 echo ""
 
 # Démarrer le backend
-echo -e "${YELLOW}      → Démarrage du backend (port 8765)...${NC}"
+echo -e "${YELLOW}      → Démarrage du backend (port $BACKEND_PORT)...${NC}"
 source backend/venv/bin/activate
 export PYTHONUNBUFFERED=1
 
 # Lancer le backend en background avec logs
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8765 > backend.log 2>&1 &
+python -m uvicorn backend.main:app --host 127.0.0.1 --port $BACKEND_PORT > backend.log 2>&1 &
 BACKEND_PID=$!
 
 # Sauvegarder le PID immédiatement
@@ -202,7 +256,7 @@ echo -e "${YELLOW}      → Vérification du backend...${NC}"
 BACKEND_READY=false
 for i in {1..15}; do
     sleep 1
-    if curl -s http://localhost:8765/health > /dev/null 2>&1; then
+    if curl -s http://localhost:$BACKEND_PORT/health > /dev/null 2>&1; then
         BACKEND_READY=true
         break
     fi
@@ -221,9 +275,10 @@ echo -e "${GREEN}      ✓ Backend opérationnel${NC}"
 echo ""
 
 # Démarrer le frontend
-echo -e "${YELLOW}      → Démarrage du frontend (port 5173)...${NC}"
+echo -e "${YELLOW}      → Démarrage du frontend (port $FRONTEND_PORT)...${NC}"
 cd frontend
-npm run dev > ../frontend.log 2>&1 &
+# --strictPort force l'utilisation du port spécifié (pas de prompt si occupé)
+npm run dev -- --strictPort > ../frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..
 
@@ -237,7 +292,7 @@ echo -e "${YELLOW}      → Vérification du frontend...${NC}"
 FRONTEND_READY=false
 for i in {1..10}; do
     sleep 1
-    if curl -s http://localhost:5173 > /dev/null 2>&1; then
+    if curl -s http://localhost:$FRONTEND_PORT > /dev/null 2>&1; then
         FRONTEND_READY=true
         break
     fi
@@ -250,6 +305,10 @@ if [ "$FRONTEND_READY" = false ]; then
 fi
 
 echo -e "${GREEN}      ✓ Frontend en cours de démarrage${NC}"
+echo ""
+
+# Étape 8: Finalisation
+echo -e "${CYAN}[8/8]${NC} ${BOLD}Finalisation...${NC}"
 echo ""
 
 # Message de succès
@@ -265,8 +324,8 @@ echo "╚═══════════════════════�
 echo -e "${NC}"
 echo ""
 echo -e "${CYAN}${BOLD}📍 Adresses des serveurs :${NC}"
-echo -e "${BLUE}   • Backend API:${NC}  http://localhost:8765"
-echo -e "${BLUE}   • Frontend UI:${NC}  http://localhost:5173"
+echo -e "${BLUE}   • Backend API:${NC}  http://localhost:$BACKEND_PORT"
+echo -e "${BLUE}   • Frontend UI:${NC}  http://localhost:$FRONTEND_PORT"
 echo ""
 echo -e "${CYAN}${BOLD}📂 Fichiers de logs :${NC}"
 echo -e "${BLUE}   • Backend:${NC}  backend.log"
@@ -275,10 +334,12 @@ echo ""
 echo -e "${CYAN}${BOLD}🔧 Informations de débogage :${NC}"
 echo -e "${BLUE}   • Backend PID:${NC}  $BACKEND_PID"
 echo -e "${BLUE}   • Frontend PID:${NC} $FRONTEND_PID"
+echo -e "${BLUE}   • Backend Port:${NC} $BACKEND_PORT (forcé)"
+echo -e "${BLUE}   • Frontend Port:${NC} $FRONTEND_PORT (forcé)"
 echo ""
 echo -e "${MAGENTA}${BOLD}💡 Astuce :${NC}"
 echo -e "   Si l'application ne s'ouvre pas automatiquement,"
-echo -e "   ouvrez ${CYAN}http://localhost:5173${NC} dans votre navigateur"
+echo -e "   ouvrez ${CYAN}http://localhost:$FRONTEND_PORT${NC} dans votre navigateur"
 echo ""
 echo -e "${YELLOW}${BOLD}🛑 Pour arrêter AutoCut :${NC}"
 echo -e "   Appuyez sur ${RED}${BOLD}Ctrl+C${NC} dans cette fenêtre"
@@ -289,9 +350,9 @@ echo ""
 # Ouvrir le navigateur
 sleep 2
 if command -v open &> /dev/null; then
-    open http://localhost:5173
+    open http://localhost:$FRONTEND_PORT
 elif command -v xdg-open &> /dev/null; then
-    xdg-open http://localhost:5173
+    xdg-open http://localhost:$FRONTEND_PORT
 fi
 
 echo -e "${GREEN}🚀 AutoCut est prêt à l'emploi !${NC}"
